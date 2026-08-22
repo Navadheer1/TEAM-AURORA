@@ -86,39 +86,44 @@ You MUST return ONLY a strictly valid JSON object with EXACTLY this structure:
   // ================= TIER 1: GEMINI VISION =================
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
-    try {
-      console.log('🤖 [VisionService] [TIER 1] Requesting Gemini Flash Latest...');
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-      
-      const prompt = promptText + "\n\nPlease return strictly JSON. Do not include markdown formatting like ```json.";
-      const imageParts = [
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: mimeType
-          }
+    const candidateModels = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-2.5-pro'];
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    const prompt = promptText + "\n\nPlease return strictly JSON. Do not include markdown formatting like ```json.";
+    const imageParts = [
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: mimeType
         }
-      ];
-
-      const result = await model.generateContent([prompt, ...imageParts]);
-      let replyText = result.response.text().trim();
-      
-      // Clean markdown if Gemini still returns it
-      if (replyText.startsWith('\`\`\`json')) {
-        replyText = replyText.substring(7);
-        if (replyText.endsWith('\`\`\`')) replyText = replyText.substring(0, replyText.length - 3);
-      } else if (replyText.startsWith('\`\`\`')) {
-        replyText = replyText.substring(3);
-        if (replyText.endsWith('\`\`\`')) replyText = replyText.substring(0, replyText.length - 3);
       }
-      
-      console.log(`✅ [VisionService] [TIER 1] Gemini Vision response in ${Date.now() - startTime}ms:`, replyText);
-      return parseAndFormatAIResponse(replyText.trim(), 'gemini-flash-latest');
-    } catch (geminiErr) {
-      console.error('⚠️ [VisionService] [TIER 1] Gemini request threw error:', geminiErr.message);
-      throw new Error(`Gemini Vision API failed: ${geminiErr.message}`);
+    ];
+
+    let lastError = null;
+    for (const modelName of candidateModels) {
+      try {
+        console.log(`🤖 [VisionService] [TIER 1] Requesting ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([prompt, ...imageParts]);
+        let replyText = result.response.text().trim();
+        
+        // Clean markdown if Gemini still returns it
+        if (replyText.startsWith('```json')) {
+          replyText = replyText.substring(7);
+          if (replyText.endsWith('```')) replyText = replyText.substring(0, replyText.length - 3);
+        } else if (replyText.startsWith('```')) {
+          replyText = replyText.substring(3);
+          if (replyText.endsWith('```')) replyText = replyText.substring(0, replyText.length - 3);
+        }
+        
+        console.log(`✅ [VisionService] [TIER 1] Gemini Vision (${modelName}) response in ${Date.now() - startTime}ms:`, replyText);
+        return parseAndFormatAIResponse(replyText.trim(), modelName);
+      } catch (geminiErr) {
+        lastError = geminiErr;
+        console.warn(`⚠️ [VisionService] [TIER 1] ${modelName} error:`, geminiErr.message);
+      }
     }
+
+    throw new Error(`Gemini Vision API failed: ${lastError?.message || 'All candidate models failed'}`);
   }
 
   // If no Gemini key is provided, we fail explicitly per requirements

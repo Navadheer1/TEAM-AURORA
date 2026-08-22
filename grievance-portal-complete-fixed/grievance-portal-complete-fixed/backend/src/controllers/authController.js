@@ -276,7 +276,7 @@ const refreshToken = asyncHandler(async (req, res) => {
   
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'a7f3k9m2n8p5q1r4s6t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8_refresh');
   } catch (error) {
     throw new AppError('Invalid or expired refresh token.', 401);
   }

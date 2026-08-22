@@ -1,15 +1,18 @@
 const jwt = require('jsonwebtoken');
 const { getDb, COLLECTIONS } = require('../config/firebase');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'a8f3k9m2n8p5q1r4s6t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8_secret';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'a7f3k9m2n8p5q1r4s6t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8_refresh';
+
 // ========= JWT Token Generation =========
 const generateToken = (userId, role) => {
-  return jwt.sign({ userId, role }, process.env.JWT_SECRET, {
+  return jwt.sign({ userId, role }, JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 };
 
 const generateRefreshToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ userId }, JWT_REFRESH_SECRET, {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   });
 };
@@ -23,7 +26,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const db = getDb();
     const userDoc = await db.collection(COLLECTIONS.USERS).doc(decoded.userId).get();
