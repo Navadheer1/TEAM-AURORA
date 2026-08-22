@@ -1391,6 +1391,98 @@
       "createdAt": "2026-06-03T06:41:43.810Z",
       "updatedAt": "2026-06-03T06:41:43.810Z",
       "id": "complaints-1780468903826-gqsx6zzpp"
+    },
+    "complaints-1787374911735-xmd23hn5o": {
+      "complaintId": "MUN-AP-20260822-055691",
+      "category": "civic_issue",
+      "subcategory": "emergency_collapse",
+      "description": "[NDMA EMERGENCY DISPATCH] [Trapped Citizens 🆘] • [Blocked Access / Debris 🚧] • [Active Fire / Toxic Smoke 🔥]",
+      "location": {
+        "address": "Guntur Disaster Response Zone, Andhra Pradesh",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "",
+        "lat": 16.3067,
+        "lng": 80.4365
+      },
+      "isAnonymous": true,
+      "userId": null,
+      "userName": "Anonymous",
+      "userEmail": null,
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Emergency",
+      "severityReason": "Urgent threat to life, safety, or critical infrastructure identified locally.",
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T05:01:51.700Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T05:01:51.700Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T05:01:51.699Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T05:01:51.700Z",
+      "updatedAt": "2026-08-22T05:01:51.700Z",
+      "id": "complaints-1787374911735-xmd23hn5o"
+    },
+    "complaints-1787374911903-ofookaqau": {
+      "complaintId": "MUN-AP-20260822-FA82F6",
+      "category": "civic_issue",
+      "subcategory": "emergency_fire",
+      "description": "[NDMA EMERGENCY DISPATCH] [Structural Damage / Wall Crack 🏚️]",
+      "location": {
+        "address": "Alangulam, Tenkasi, Tamil Nadu, 627862",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "",
+        "lat": 8.928487062665504,
+        "lng": 77.52024687825586
+      },
+      "isAnonymous": true,
+      "userId": null,
+      "userName": "Anonymous",
+      "userEmail": null,
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Emergency",
+      "severityReason": "Urgent threat to life, safety, or critical infrastructure identified locally.",
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T05:01:51.855Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T05:01:51.855Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T05:01:51.854Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T05:01:51.855Z",
+      "updatedAt": "2026-08-22T05:01:51.855Z",
+      "id": "complaints-1787374911903-ofookaqau"
     }
   },
   "escalations": {},

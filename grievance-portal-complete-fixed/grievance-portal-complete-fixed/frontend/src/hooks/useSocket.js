@@ -31,6 +31,10 @@ export function useSocket() {
     if (!socketInstance) {
       console.log('🔌 Creating new Socket.IO singleton instance...');
       const getSocketURL = () => {
+        const envSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+        if (envSocketUrl) {
+          return envSocketUrl.replace(/\/api\/?$/, '');
+        }
         if (typeof window !== 'undefined') {
           const hostname = window.location.hostname;
           const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
@@ -38,14 +42,15 @@ export function useSocket() {
             return window.location.origin;
           }
         }
-        return import.meta.env.VITE_SOCKET_URL || '';
+        return 'http://127.0.0.1:8000';
       };
 
       socketInstance = io(getSocketURL(), {
         transports: ['websocket', 'polling'],
+        withCredentials: true,
         auth: { token },
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 2000,
       });
 
