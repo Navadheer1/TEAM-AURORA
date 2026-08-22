@@ -42,9 +42,17 @@ export default function OfflineSyncManager() {
       setShowStatus(true);
     }
 
+    // Periodic check to auto-retry queued items once server connection is restored
+    const syncInterval = setInterval(() => {
+      if (navigator.onLine) {
+        triggerSync();
+      }
+    }, 15000);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      clearInterval(syncInterval);
     };
   }, []);
 

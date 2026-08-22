@@ -2,16 +2,16 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const getBaseURL = () => {
+  const envApiUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+  if (envApiUrl) {
+    return envApiUrl.endsWith('/api') ? envApiUrl : `${envApiUrl}/api`;
+  }
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
     if (!isLocalhost) {
       return `${window.location.origin}/api`;
     }
-  }
-  const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl) {
-    return envApiUrl.endsWith('/api') ? envApiUrl : `${envApiUrl}/api`;
   }
   return 'http://127.0.0.1:8000/api';
 };
@@ -25,6 +25,10 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
     // Sanitize string fields against XSS
     if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
       config.data = sanitizeObject(config.data);

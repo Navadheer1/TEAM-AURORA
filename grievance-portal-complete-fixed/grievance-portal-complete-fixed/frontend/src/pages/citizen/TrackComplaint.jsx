@@ -4,7 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, CheckCircle, Clock, AlertTriangle, MapPin, Calendar, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import Navbar from '../../components/Navbar';
+import DashboardLayout from '../../components/DashboardLayout';
 import StatusBadge, { CategoryBadge } from '../../components/StatusBadge';
+import useAuthStore from '../../store/authStore';
 import api from '../../utils/api';
 import { formatDateTime, STATUS_LABELS, AUTHORITY_TYPE_INFO } from '../../utils/constants';
 
@@ -33,6 +35,7 @@ export default function TrackComplaint() {
   const { complaintId: paramId } = useParams();
   const [inputId, setInputId] = useState(paramId || '');
   const [searchId, setSearchId] = useState(paramId || '');
+  const { isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -51,10 +54,8 @@ export default function TrackComplaint() {
 
   const authorityInfo = data ? AUTHORITY_TYPE_INFO[data.authorityType] : null;
 
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <Navbar />
-      <div className="max-w-2xl mx-auto px-4 py-12">
+  const content = (
+    <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-gov mx-auto mb-4 shadow-gov">
@@ -203,6 +204,16 @@ export default function TrackComplaint() {
           </motion.div>
         )}
       </div>
+  );
+
+  if (isAuthenticated) {
+    return <DashboardLayout>{content}</DashboardLayout>;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <Navbar />
+      {content}
     </div>
   );
 }

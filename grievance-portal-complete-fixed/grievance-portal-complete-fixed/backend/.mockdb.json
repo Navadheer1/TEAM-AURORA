@@ -175,7 +175,7 @@
       "createdAt": "2026-05-29T03:42:39.601Z",
       "updatedAt": "2026-05-29T03:42:39.601Z",
       "id": "users-1780026159601-6c9dba8zx",
-      "lastLoginAt": "2026-05-30T04:29:59.541Z"
+      "lastLoginAt": "2026-08-22T06:35:00.838Z"
     },
     "users-1780026159813-8ap1lzqdw": {
       "name": "Vijayawada PS",
@@ -767,6 +767,28 @@
       "createdAt": "2026-06-03T06:37:16.106Z",
       "updatedAt": "2026-06-03T06:37:16.106Z",
       "id": "users-1780468636106-q247ooirx"
+    },
+    "users-1787379318218-d092jc6yr": {
+      "name": "Navadheer Nayudu",
+      "email": "nayudu.nava2007@gmail.com",
+      "googleId": "112838019232115812171",
+      "profilePicture": "https://lh3.googleusercontent.com/a/ACg8ocJLw2OMDOU3Dx6aLBjSxk1WaOPi4U8jdzhQlfCxCAJlqggg_A=s96-c",
+      "authProvider": "google",
+      "role": "citizen",
+      "phone": null,
+      "state": "andhra pradesh",
+      "district": "guntur",
+      "isActive": true,
+      "isVerified": true,
+      "complaintsCount": 1,
+      "createdAt": "2026-08-22T06:15:18.175Z",
+      "updatedAt": "2026-08-22T06:35:41.660Z",
+      "lastLoginAt": "2026-08-22T06:35:41.660Z",
+      "id": "users-1787379318218-d092jc6yr",
+      "reputationPoints": 30,
+      "badges": [
+        "First Reporter"
+      ]
     }
   },
   "complaints": {
@@ -1391,6 +1413,262 @@
       "createdAt": "2026-06-03T06:41:43.810Z",
       "updatedAt": "2026-06-03T06:41:43.810Z",
       "id": "complaints-1780468903826-gqsx6zzpp"
+    },
+    "complaints-1787374911735-xmd23hn5o": {
+      "complaintId": "MUN-AP-20260822-055691",
+      "category": "civic_issue",
+      "subcategory": "emergency_collapse",
+      "description": "[NDMA EMERGENCY DISPATCH] [Trapped Citizens 🆘] • [Blocked Access / Debris 🚧] • [Active Fire / Toxic Smoke 🔥]",
+      "location": {
+        "address": "Guntur Disaster Response Zone, Andhra Pradesh",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "",
+        "lat": 16.3067,
+        "lng": 80.4365
+      },
+      "isAnonymous": true,
+      "userId": null,
+      "userName": "Anonymous",
+      "userEmail": null,
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Emergency",
+      "severityReason": "Urgent threat to life, safety, or critical infrastructure identified locally.",
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T05:01:51.700Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T05:01:51.700Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T05:01:51.699Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T05:01:51.700Z",
+      "updatedAt": "2026-08-22T05:01:51.700Z",
+      "id": "complaints-1787374911735-xmd23hn5o"
+    },
+    "complaints-1787374911903-ofookaqau": {
+      "complaintId": "MUN-AP-20260822-FA82F6",
+      "category": "civic_issue",
+      "subcategory": "emergency_fire",
+      "description": "[NDMA EMERGENCY DISPATCH] [Structural Damage / Wall Crack 🏚️]",
+      "location": {
+        "address": "Alangulam, Tenkasi, Tamil Nadu, 627862",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "",
+        "lat": 8.928487062665504,
+        "lng": 77.52024687825586
+      },
+      "isAnonymous": true,
+      "userId": null,
+      "userName": "Anonymous",
+      "userEmail": null,
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Emergency",
+      "severityReason": "Urgent threat to life, safety, or critical infrastructure identified locally.",
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T05:01:51.855Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T05:01:51.855Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T05:01:51.854Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T05:01:51.855Z",
+      "updatedAt": "2026-08-22T05:01:51.855Z",
+      "id": "complaints-1787374911903-ofookaqau"
+    },
+    "complaints-1787379380533-rronvvpod": {
+      "complaintId": "MUN-AP-20260822-15EE66",
+      "category": "civic_issue",
+      "subcategory": "road_damage",
+      "description": "A large, deep pothole filled with standing water is present in the middle of a paved road. The surrounding asphalt is heavily cracked and deteriorating, presenting a safety hazard to passing vehicles.",
+      "location": {
+        "address": "Vignan Group Of Institutions, Tenali - Narakoduru Road, Narakoduru, Chebrolu, Guntur, Andhra Pradesh, 522213, India",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "522213",
+        "lat": 16.232642411500215,
+        "lng": 80.55097037993947
+      },
+      "isAnonymous": false,
+      "userId": "users-1787379318218-d092jc6yr",
+      "userName": "Navadheer Nayudu",
+      "userEmail": "nayudu.nava2007@gmail.com",
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Medium",
+      "severityReason": "Standard public service disruption or civic issue classified under default rules.",
+      "aiVision": {
+        "provider": "gemini",
+        "model": "gemini-gemini-3.5-flash",
+        "detectedIssue": "Road / Pothole",
+        "category": "civic_issue",
+        "subcategory": "road_damage",
+        "confidence": 0.95,
+        "severity": "high",
+        "isRelevant": true,
+        "analysis": "",
+        "reason": "A large, deep pothole filled with standing water is present in the middle of a paved road. The surrounding asphalt is heavily cracked and deteriorating, presenting a safety hazard to passing vehicles.",
+        "analyzedAt": "2026-08-22T06:16:20.478Z"
+      },
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T06:16:20.479Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T06:16:20.479Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T06:16:20.476Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T06:16:20.479Z",
+      "updatedAt": "2026-08-22T06:16:20.479Z",
+      "id": "complaints-1787379380533-rronvvpod"
+    },
+    "complaints-1787379469673-5a5t1qvls": {
+      "complaintId": "MUN-AP-20260822-47F476",
+      "category": "civic_issue",
+      "subcategory": "road_damage",
+      "description": "A large, deep pothole filled with standing water is situated in the middle of a paved roadway, presenting a safety hazard to traffic.",
+      "location": {
+        "address": "Vignan Group Of Institutions, Tenali - Narakoduru Road, Narakoduru, Chebrolu, Guntur, Andhra Pradesh, 522213, India",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "522213",
+        "lat": 16.232641736512324,
+        "lng": 80.55095006726562
+      },
+      "isAnonymous": false,
+      "userId": "users-1787379318218-d092jc6yr",
+      "userName": "Navadheer Nayudu",
+      "userEmail": "nayudu.nava2007@gmail.com",
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Medium",
+      "severityReason": "Standard public service disruption or civic issue classified under default rules.",
+      "aiVision": {
+        "provider": "gemini",
+        "model": "gemini-gemini-3.5-flash",
+        "detectedIssue": "Road / Pothole",
+        "category": "civic_issue",
+        "subcategory": "road_damage",
+        "confidence": 0.98,
+        "severity": "high",
+        "isRelevant": true,
+        "analysis": "",
+        "reason": "A large, deep pothole filled with standing water is situated in the middle of a paved roadway, presenting a safety hazard to traffic.",
+        "analyzedAt": "2026-08-22T06:17:49.623Z"
+      },
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T06:17:49.623Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T06:17:49.623Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T06:17:49.622Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T06:17:49.623Z",
+      "updatedAt": "2026-08-22T06:17:49.623Z",
+      "id": "complaints-1787379469673-5a5t1qvls"
+    },
+    "complaints-1787381825432-n5g205ror": {
+      "complaintId": "MUN-AP-20260822-BB1349",
+      "category": "civic_issue",
+      "subcategory": "emergency_flood",
+      "description": "Emergency hazard reported at Guntur Disaster Response Sector, Andhra Pradesh. Rapid assistance required.",
+      "location": {
+        "address": "Guntur Disaster Response Sector, Andhra Pradesh",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "",
+        "lat": 16.3067,
+        "lng": 80.4365
+      },
+      "isAnonymous": false,
+      "userId": "users-1787379318218-d092jc6yr",
+      "userName": "Navadheer Nayudu",
+      "userEmail": "nayudu.nava2007@gmail.com",
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Emergency",
+      "severityReason": "Urgent threat to life, safety, or critical infrastructure identified locally.",
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T06:57:05.374Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T06:57:05.374Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T06:57:05.372Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T06:57:05.374Z",
+      "updatedAt": "2026-08-22T06:57:05.374Z",
+      "id": "complaints-1787381825432-n5g205ror"
     }
   },
   "escalations": {},
@@ -2048,6 +2326,42 @@
       "isRead": false,
       "createdAt": "2026-06-03T06:41:46.575Z",
       "id": "notifications-1780468906575-8oa6i91go"
+    },
+    "notifications-1787379380981-jk2a5w126": {
+      "userId": "users-1787379318218-d092jc6yr",
+      "type": "complaint_submitted",
+      "title": "Complaint Registered",
+      "message": "Your complaint MUN-AP-20260822-15EE66 has been submitted successfully.",
+      "metadata": {
+        "complaintId": "MUN-AP-20260822-15EE66"
+      },
+      "isRead": true,
+      "createdAt": "2026-08-22T06:16:20.981Z",
+      "id": "notifications-1787379380981-jk2a5w126"
+    },
+    "notifications-1787379470023-51bf5ah7q": {
+      "userId": "users-1787379318218-d092jc6yr",
+      "type": "complaint_submitted",
+      "title": "Complaint Registered",
+      "message": "Your complaint MUN-AP-20260822-47F476 has been submitted successfully.",
+      "metadata": {
+        "complaintId": "MUN-AP-20260822-47F476"
+      },
+      "isRead": true,
+      "createdAt": "2026-08-22T06:17:50.023Z",
+      "id": "notifications-1787379470023-51bf5ah7q"
+    },
+    "notifications-1787381825900-8dzfycorx": {
+      "userId": "users-1787379318218-d092jc6yr",
+      "type": "complaint_submitted",
+      "title": "Complaint Registered",
+      "message": "Your complaint MUN-AP-20260822-BB1349 has been submitted successfully.",
+      "metadata": {
+        "complaintId": "MUN-AP-20260822-BB1349"
+      },
+      "isRead": false,
+      "createdAt": "2026-08-22T06:57:05.900Z",
+      "id": "notifications-1787381825900-8dzfycorx"
     }
   }
 }

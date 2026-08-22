@@ -7,11 +7,11 @@ import toast from 'react-hot-toast';
 import {
   MapPin, Upload, X, AlertCircle, CheckCircle, Navigation,
   FileImage, FileVideo, Eye, EyeOff, ChevronRight, Info, Clipboard,
-  Sparkles, Loader2, WifiOff
+  Sparkles, Loader2, WifiOff, Camera, RefreshCw, Trash2, Edit3, Check, CheckCircle2
 } from 'lucide-react';
 import DashboardLayout from '../../components/DashboardLayout';
 import api from '../../utils/api';
-import { CATEGORIES, INDIAN_STATES, DISTRICTS_MAP } from '../../utils/constants';
+import { CATEGORIES, INDIAN_STATES, DISTRICTS_MAP, AI_VISION_CATEGORIES } from '../../utils/constants';
 import { saveOfflineComplaint } from '../../utils/indexedDb';
 import { useTranslation } from '../../utils/i18n';
 
@@ -35,6 +35,8 @@ export default function SubmitComplaint() {
     location: { address: '', state: '', district: '', pincode: '', lat: null, lng: null },
   });
 
+  const [aiFile, setAiFile] = useState(null);
+  const [aiPreviewUrl, setAiPreviewUrl] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
 
@@ -57,71 +59,103 @@ export default function SubmitComplaint() {
   const set = (field, val) => setForm(f => ({ ...f, [field]: val }));
   const setLoc = (field, val) => setForm(f => ({ ...f, location: { ...f.location, [field]: val } }));
 
-  const handleAiPhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const processImageWithAI = async (file) => {
     if (!file) return;
 
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('File size too large. Max 50MB allowed.');
+    // 1. Validate file format and size
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type.toLowerCase()) && !file.type.startsWith('image/')) {
+      toast.error('Please upload a valid JPG, PNG, or WEBP image.');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File size too large. Max 15MB allowed for AI photo analysis.');
+      return;
+    }
+    if (file.size === 0) {
+      toast.error('Uploaded file is empty or corrupted.');
       return;
     }
 
+    // Set preview
+    const previewUrl = URL.createObjectURL(file);
+    setAiFile(file);
+    setAiPreviewUrl(previewUrl);
     setAiLoading(true);
-    setAiResult(null); // Clear previous result immediately
-    
-    // Clear previously mapped category/subcategory to prevent stale metadata
-    setForm(f => ({ ...f, category: '', subcategory: '' }));
+    setAiResult(null);
 
     const formData = new FormData();
     formData.append('image', file);
 
     try {
-      const res = await api.post('/complaints/detect-issue', formData, {
+      const res = await api.post('/complaints/analyze-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const { data } = res.data;
-      setAiResult(data);
+      const analysis = res.data.analysis || res.data.data;
+      setAiResult(analysis);
 
-      // Proactively add file to files array so it is attached as evidence
-      const withPreview = Object.assign(file, { preview: URL.createObjectURL(file) });
+      // Automatically attach this file to files evidence list
+      const withPreview = Object.assign(file, { preview: previewUrl });
       setFiles(prev => {
         if (prev.some(f => f.name === file.name && f.size === file.size)) return prev;
         if (prev.length >= 5) return prev;
         return [...prev, withPreview];
       });
 
-      if (data.is_complaint && data.category !== 'uncertain' && data.category !== 'not_a_complaint') {
-        if (data.confidence >= 0.80) {
-          // Valid Grievance - Automatically update form state and advance
-          setForm(f => ({
-            ...f,
-            category: data.mappedCategory,
-            subcategory: data.mappedSubcategory
-          }));
-          
-          toast.success(`✓ GRIEVANCE DETECTED: ${data.category || data.detectedCategory}`);
-          
-          // Wait briefly for React state and UX purposes before navigating to next step (Description)
-          setTimeout(() => {
-            setStep(1); 
-          }, 1500);
-          
+      if (analysis.is_complaint && analysis.category !== 'Other') {
+        // Auto-fill category, subcategory and description
+        setForm(f => ({
+          ...f,
+          category: analysis.mappedCategory || f.category || 'civic_issue',
+          subcategory: analysis.mappedSubcategory || f.subcategory || 'road_damage',
+          description: analysis.description || f.description,
+        }));
+
+        if (analysis.confidence >= 0.80) {
+          toast.success(`✨ AI detected: ${analysis.category} (${Math.round(analysis.confidence * 100)}%)`);
         } else {
-          // Valid complaint detected, but confidence is too low
-          setForm(f => ({ ...f, category: '', subcategory: '' }));
-          toast.error('AI could not confidently identify the grievance. Please upload a clearer image.', { duration: 5000 });
+          toast(`🔍 AI suggestion: ${analysis.category} (${Math.round(analysis.confidence * 100)}%). Please verify details.`, { icon: 'ℹ️' });
         }
       } else {
-        // Not a complaint / uncertain / food image / passport photo
-        setForm(f => ({ ...f, category: '', subcategory: '' }));
-        toast.error('❌ NOT A VALID GRIEVANCE IMAGE. Please upload a clear photo of the public issue you want to report.', { duration: 6000 });
+        toast('⚠️ We couldn\'t confidently identify a civic complaint from this photo. You can still select category and enter description manually.', { duration: 6000, icon: '⚠️' });
       }
     } catch (err) {
-      console.error('AI upload error:', err);
-      toast.error(err.response?.data?.message || 'AI Photo detection failed. Please select manually.');
+      console.error('AI vision analysis error:', err);
+      toast.error(err.response?.data?.message || 'AI analysis is temporarily unavailable. You can still submit your complaint manually.');
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleAiPhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processImageWithAI(file);
+  };
+
+  const clearAiPhoto = () => {
+    if (aiPreviewUrl) URL.revokeObjectURL(aiPreviewUrl);
+    setAiFile(null);
+    setAiPreviewUrl(null);
+    setAiResult(null);
+    setAiLoading(false);
+  };
+
+  const handleAiCategoryChange = (e) => {
+    const selectedVal = e.target.value;
+    const item = AI_VISION_CATEGORIES.find(c => c.value === selectedVal);
+    if (item) {
+      setForm(f => ({ ...f, category: item.category, subcategory: item.subcategory }));
+      if (aiResult) {
+        setAiResult(prev => ({
+          ...prev,
+          category: item.value,
+          mappedCategory: item.category,
+          mappedSubcategory: item.subcategory,
+          detectedCategory: item.value
+        }));
+      }
+      toast.success(`Category updated to: ${item.label}`);
     }
   };
 
@@ -352,11 +386,10 @@ export default function SubmitComplaint() {
 
   const canNext = () => {
     if (step === 0) {
-      if (aiResult && (aiResult.is_complaint === false || aiResult.category === 'uncertain')) return false;
-      return form.category && form.subcategory;
+      return Boolean(form.category && form.subcategory);
     }
-    if (step === 1) return form.description.length >= 20;
-    if (step === 2) return form.location.address && form.location.state;
+    if (step === 1) return Boolean(form.description && form.description.trim().length >= 10);
+    if (step === 2) return Boolean(form.location.address && form.location.state);
     return true;
   };
 
@@ -541,132 +574,199 @@ export default function SubmitComplaint() {
             {/* Step 0: Category */}
             {step === 0 && (
               <div className="space-y-4">
-                {/* AI Photo Detection Enhancement Box */}
-                <div className="card p-5 bg-gradient-to-br from-indigo-50/70 to-cyan-50/70 dark:from-indigo-950/20 dark:to-cyan-950/20 border border-white dark:border-white/5 shadow-md mb-6 relative overflow-hidden" style={{ borderRadius: '24px' }}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-                  
-                  <div className="flex gap-4 items-start relative z-10">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-white flex items-center justify-center flex-shrink-0 shadow-md border border-white/20" style={{ boxShadow: 'var(--clay-btn-primary)' }}>
-                      <Sparkles size={20} className="animate-pulse" />
-                    </div>
-                    
-                    <div className="flex-1 space-y-3">
+                {/* AI Multimodal Image Analyzer Card */}
+                <div className="card p-5 sm:p-6 bg-gradient-to-br from-blue-50/90 via-indigo-50/60 to-purple-50/50 dark:from-slate-900 dark:via-indigo-950/30 dark:to-slate-900 border border-indigo-100 dark:border-indigo-900/40 shadow-xl mb-6 relative overflow-hidden rounded-3xl">
+                  {/* Background glow */}
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-4 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-600 text-white flex items-center justify-center shadow-md flex-shrink-0">
+                        <Sparkles size={20} className={aiLoading ? 'animate-spin' : 'animate-pulse'} />
+                      </div>
                       <div>
-                        <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
-                          🤖 AI Smart Categorization
+                        <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                          AI Multimodal Photo Analyzer
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                            Vision AI
+                          </span>
                         </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">
-                          Upload a photo of the civic issue, and our OpenAI Vision model will automatically analyze and classify it!
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Upload or snap a photo. AI will identify the issue, classify the category, and draft a factual description.
                         </p>
                       </div>
+                    </div>
+                  </div>
 
-                      <div className="flex flex-wrap items-center gap-3">
-                        <label className="btn-primary py-2 px-4 text-[10px] uppercase cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 transition-all">
-                          <Upload size={13} />
-                          {aiLoading ? 'Analyzing Photo...' : 'Scan Photo with AI'}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAiPhotoUpload}
-                            disabled={aiLoading}
-                            className="sr-only"
-                          />
-                        </label>
+                  {/* Upload / Capture Action Buttons (if no photo yet) */}
+                  {!aiPreviewUrl && (
+                    <div className="grid sm:grid-cols-2 gap-3 mt-4 relative z-10">
+                      <label className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-800 hover:border-indigo-500 bg-white/70 dark:bg-slate-800/60 cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-800 group shadow-sm">
+                        <Upload size={22} className="text-indigo-600 dark:text-indigo-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                        <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">Upload Photo from Device</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WEBP up to 15MB</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/jpg"
+                          onChange={handleAiPhotoUpload}
+                          disabled={aiLoading}
+                          className="sr-only"
+                        />
+                      </label>
+
+                      <label className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-indigo-300 dark:border-indigo-800 hover:border-indigo-500 bg-white/70 dark:bg-slate-800/60 cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-800 group shadow-sm">
+                        <Camera size={22} className="text-indigo-600 dark:text-indigo-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                        <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">Capture with Camera</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Snap live incident photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleAiPhotoUpload}
+                          disabled={aiLoading}
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Photo Preview & Analysis Result Area */}
+                  {aiPreviewUrl && (
+                    <div className="mt-4 space-y-4 relative z-10">
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 aspect-video max-h-60 flex items-center justify-center shadow-inner">
+                        <img src={aiPreviewUrl} alt="Incident Evidence" className="w-full h-full object-contain" />
                         
+                        {/* Overlay Actions */}
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-2">
+                          <label className="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white text-[11px] font-semibold hover:bg-black/90 cursor-pointer flex items-center gap-1.5 transition-colors shadow-md">
+                            <RefreshCw size={12} className={aiLoading ? 'animate-spin' : ''} />
+                            Change Photo
+                            <input type="file" accept="image/*" onChange={handleAiPhotoUpload} disabled={aiLoading} className="sr-only" />
+                          </label>
+                          <button
+                            onClick={clearAiPhoto}
+                            disabled={aiLoading}
+                            className="p-1.5 rounded-lg bg-red-600/80 backdrop-blur-md text-white hover:bg-red-600 transition-colors shadow-md"
+                            title="Remove Photo"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+
+                        {/* Loading State Overlay */}
                         {aiLoading && (
-                          <div className="flex items-center gap-2 text-xs font-bold text-indigo-500 animate-pulse">
-                            <Loader2 size={13} className="animate-spin" /> Processing image buffer...
+                          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center text-white p-4 text-center">
+                            <div className="w-9 h-9 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2" />
+                            <div className="font-bold text-sm">✨ AI Analyzing Image...</div>
+                            <div className="text-xs text-indigo-200 mt-0.5">Detecting complaint type & drafting factual description</div>
                           </div>
                         )}
                       </div>
 
-                      {aiResult && (
+                      {/* AI Structured Results Card */}
+                      {aiResult && !aiLoading && (
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className={`bg-white/80 dark:bg-slate-900/60 p-4 border space-y-2 text-xs ${aiResult.is_complaint === false ? (aiResult.category === 'uncertain' ? 'border-amber-400 dark:border-amber-500/50' : 'border-red-400 dark:border-red-500/50') : 'border-white/60 dark:border-white/5'}`}
-                          style={{ boxShadow: 'var(--clay-shadow-sm)', borderRadius: '18px' }}
+                          className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md space-y-3.5"
                         >
-                          {aiResult.is_complaint === false ? (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2">
-                                <AlertCircle size={20} className={aiResult.category === 'uncertain' ? 'text-amber-500' : 'text-red-500'} />
-                                <span className={`font-black text-sm uppercase tracking-wider ${aiResult.category === 'uncertain' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  {aiResult.category === 'uncertain' ? '⚠️ IMAGE UNCLEAR' : '⚠️ IMAGE NOT SUITABLE FOR COMPLAINT'}
-                                </span>
-                              </div>
-                              <p className="text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
-                                {aiResult.category === 'uncertain' 
-                                  ? 'Please upload a clearer image showing the actual issue.' 
-                                  : `Reason: ${aiResult.reason || 'This appears to be a non-complaint image (e.g., passport photo, food, random scenery) and does not show a civic issue.'}`}
-                              </p>
-                              <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">AI Analysis:</span>
-                                <p className="text-slate-600 dark:text-slate-300 italic">{aiResult.analysis}</p>
-                              </div>
+                          {/* Classification & Confidence Row */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">AI Classification:</span>
+                              <span className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <CheckCircle2 size={16} className="text-green-500" />
+                                {aiResult.category}
+                              </span>
                             </div>
-                          ) : (
-                            <>
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Detected Issue:</span>
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${aiResult.category === 'corruption_bribery' ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200/50' : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50'}`}>
-                                  {aiResult.category === 'corruption_bribery' ? 'CORRUPTION / BRIBERY' : (aiResult.category || aiResult.detectedCategory)}
-                                </span>
+
+                            <div className="flex items-center gap-2">
+                              {/* Confidence Pill */}
+                              <div className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 ${
+                                aiResult.confidence >= 0.8
+                                  ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
+                                  : aiResult.confidence >= 0.5
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                              }`}>
+                                <span>{Math.round(aiResult.confidence * 100)}% Confidence</span>
                               </div>
 
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Category:</span>
-                                <span className="font-black text-slate-800 dark:text-slate-100 uppercase text-xs">
-                                  {aiResult.mappedCategory}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subcategory:</span>
-                                <span className="font-black text-slate-800 dark:text-slate-100 uppercase text-xs">
-                                  {aiResult.mappedSubcategory?.replace(/_/g, ' ')}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Confidence:</span>
-                                <span className="font-black text-slate-800 dark:text-slate-100">
-                                  {Math.round(aiResult.confidence * 100)}%
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Severity:</span>
-                                <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200/50 animate-pulse">
+                              {/* Severity Pill */}
+                              {aiResult.severity && (
+                                <div className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                                   {aiResult.severity}
-                                </span>
-                              </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Recommended Department:</span>
-                                <span className="font-black text-slate-800 dark:text-slate-100 text-xs">
-                                  {aiResult.department || 'Auto-Routing'}
-                                </span>
-                              </div>
-
-                              <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2 space-y-1">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">AI Summary:</span>
-                                <p className="text-slate-600 dark:text-slate-300 font-semibold leading-relaxed">
-                                  {aiResult.analysis}
-                                </p>
-                              </div>
-
-                              <div className="pt-1.5 flex gap-2">
-                                <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1">
-                                  <CheckCircle size={11} /> Auto-Mapped: {aiResult.mappedCategory} &gt; {aiResult.mappedSubcategory?.replace(/_/g, ' ')}
-                                </span>
-                              </div>
-                            </>
+                          {/* Visual Observations Bullet Points */}
+                          {aiResult.observations && aiResult.observations.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Visual Observations:</span>
+                              <ul className="grid sm:grid-cols-2 gap-1 bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                                {aiResult.observations.map((obs, idx) => (
+                                  <li key={idx} className="flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                                    <span className="text-indigo-500 font-bold">•</span>
+                                    <span>{obs}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           )}
+
+                          {/* AI-Generated Description with Edit Box */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                <Edit3 size={12} /> AI Drafted Description (Editable):
+                              </span>
+                              <span className="text-[10px] text-slate-400">You can edit before proceeding</span>
+                            </div>
+                            <textarea
+                              rows={3}
+                              value={form.description}
+                              onChange={e => set('description', e.target.value)}
+                              className="input text-xs leading-relaxed resize-none bg-slate-50 dark:bg-slate-800/50 font-sans"
+                              placeholder="Factual complaint description drafted by AI..."
+                            />
+                          </div>
+
+                          {/* Quick Category Override Dropdown & Advance Button */}
+                          <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Change Category:</span>
+                              <select
+                                value={aiResult.category}
+                                onChange={handleAiCategoryChange}
+                                className="input py-1.5 text-xs flex-1 sm:flex-initial"
+                              >
+                                {AI_VISION_CATEGORIES.map(c => (
+                                  <option key={c.value} value={c.value}>{c.icon} {c.label}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!form.category) {
+                                  const item = AI_VISION_CATEGORIES.find(c => c.value === aiResult.category) || AI_VISION_CATEGORIES[0];
+                                  setForm(f => ({ ...f, category: item.category, subcategory: item.subcategory }));
+                                }
+                                setStep(2); // Advance directly to Location step
+                              }}
+                              className="btn-primary py-2 px-4 text-xs uppercase font-bold flex items-center gap-1.5 w-full sm:w-auto justify-center shadow-md active:scale-95 transition-all"
+                            >
+                              <Check size={14} /> Accept & Proceed to Location
+                            </button>
+                          </div>
                         </motion.div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {(!aiResult || aiResult.is_complaint !== false) && (
