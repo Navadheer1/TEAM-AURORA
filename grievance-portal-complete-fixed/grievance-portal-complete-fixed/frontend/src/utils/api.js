@@ -25,6 +25,10 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers['Authorization']) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
     // Sanitize string fields against XSS
     if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
       config.data = sanitizeObject(config.data);

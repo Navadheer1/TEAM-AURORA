@@ -785,7 +785,7 @@
       "updatedAt": "2026-08-22T06:35:41.660Z",
       "lastLoginAt": "2026-08-22T06:35:41.660Z",
       "id": "users-1787379318218-d092jc6yr",
-      "reputationPoints": 20,
+      "reputationPoints": 30,
       "badges": [
         "First Reporter"
       ]
@@ -1623,6 +1623,52 @@
       "createdAt": "2026-08-22T06:17:49.623Z",
       "updatedAt": "2026-08-22T06:17:49.623Z",
       "id": "complaints-1787379469673-5a5t1qvls"
+    },
+    "complaints-1787381825432-n5g205ror": {
+      "complaintId": "MUN-AP-20260822-BB1349",
+      "category": "civic_issue",
+      "subcategory": "emergency_flood",
+      "description": "Emergency hazard reported at Guntur Disaster Response Sector, Andhra Pradesh. Rapid assistance required.",
+      "location": {
+        "address": "Guntur Disaster Response Sector, Andhra Pradesh",
+        "state": "andhra pradesh",
+        "district": "guntur",
+        "pincode": "",
+        "lat": 16.3067,
+        "lng": 80.4365
+      },
+      "isAnonymous": false,
+      "userId": "users-1787379318218-d092jc6yr",
+      "userName": "Navadheer Nayudu",
+      "userEmail": "nayudu.nava2007@gmail.com",
+      "userPhone": null,
+      "attachments": [],
+      "status": "pending",
+      "severity": "Emergency",
+      "severityReason": "Urgent threat to life, safety, or critical infrastructure identified locally.",
+      "routing": {
+        "authorityId": "authorities-1780026160243-t1wne3atz",
+        "authorityType": "municipal",
+        "authorityName": "Guntur Municipal Corp",
+        "assignedAt": "2026-08-22T06:57:05.374Z"
+      },
+      "statusHistory": [
+        {
+          "status": "pending",
+          "remarks": "Complaint registered and routed to authority.",
+          "timestamp": "2026-08-22T06:57:05.374Z",
+          "updatedBy": "system"
+        }
+      ],
+      "remarks": [],
+      "proofUploads": [],
+      "preferredLanguage": "en",
+      "escalationLevel": 0,
+      "escalationDue": "2026-08-25T06:57:05.372Z",
+      "isEscalated": false,
+      "createdAt": "2026-08-22T06:57:05.374Z",
+      "updatedAt": "2026-08-22T06:57:05.374Z",
+      "id": "complaints-1787381825432-n5g205ror"
     }
   },
   "escalations": {},
@@ -2304,6 +2350,18 @@
       "isRead": true,
       "createdAt": "2026-08-22T06:17:50.023Z",
       "id": "notifications-1787379470023-51bf5ah7q"
+    },
+    "notifications-1787381825900-8dzfycorx": {
+      "userId": "users-1787379318218-d092jc6yr",
+      "type": "complaint_submitted",
+      "title": "Complaint Registered",
+      "message": "Your complaint MUN-AP-20260822-BB1349 has been submitted successfully.",
+      "metadata": {
+        "complaintId": "MUN-AP-20260822-BB1349"
+      },
+      "isRead": false,
+      "createdAt": "2026-08-22T06:57:05.900Z",
+      "id": "notifications-1787381825900-8dzfycorx"
     }
   }
 }

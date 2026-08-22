@@ -13,41 +13,66 @@ import { identifyHotspots } from '../utils/geoVisionHelpers';
 let L = null;
 
 async function loadLeafletWithHeat() {
-  if (L && L.heatLayer) return L;
+  if (L && typeof L.heatLayer === 'function') return L;
   
   // 1. Import base Leaflet
-  L = await import('leaflet');
+  const leafletModule = await import('leaflet');
+  L = leafletModule.default || leafletModule;
   
-  // Fix standard default icon
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  });
+  // Expose to window.L so external CDN plugins attach directly to THIS Leaflet instance
+  if (typeof window !== 'undefined') {
+    window.L = L;
+  }
 
-  // 2. Inject Leaflet Heat plugin script from CDN dynamically
-  if (!L.heatLayer) {
-    await new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
-      script.onload = () => {
-        console.log('✅ Leaflet.heat plugin loaded successfully.');
-        resolve();
-      };
-      script.onerror = () => {
-        console.error('❌ Failed to load Leaflet.heat script.');
-        reject(new Error('Leaflet Heat plugin failed to load'));
-      };
-      document.head.appendChild(script);
+  // Fix standard default icon
+  if (L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
   }
 
-  // 3. Inject Leaflet MarkerCluster plugin dynamically with 3s timeout fallback
+  // 2. Inject Leaflet Heat plugin script from CDN dynamically
+  if (typeof L.heatLayer !== 'function') {
+    try {
+      await new Promise((resolve) => {
+        if (typeof window.L?.heatLayer === 'function') {
+          L.heatLayer = window.L.heatLayer;
+          return resolve();
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+        script.onload = () => {
+          if (typeof window.L?.heatLayer === 'function') {
+            L.heatLayer = window.L.heatLayer;
+          }
+          console.log('✅ Leaflet.heat plugin loaded and attached successfully.');
+          resolve();
+        };
+        script.onerror = () => {
+          console.warn('⚠️ Failed to load Leaflet.heat script from CDN.');
+          resolve();
+        };
+        document.head.appendChild(script);
+      });
+    } catch (err) {
+      console.warn('⚠️ HeatLayer loader error:', err);
+    }
+  }
+
+  // 3. Inject Leaflet MarkerCluster plugin dynamically with 2s timeout fallback
   if (!L.markerClusterGroup) {
     try {
       await Promise.race([
-        new Promise((resolve, reject) => {
+        new Promise((resolve) => {
+          if (typeof window.L?.markerClusterGroup === 'function') {
+            L.markerClusterGroup = window.L.markerClusterGroup;
+            return resolve();
+          }
+
           const link1 = document.createElement('link');
           link1.rel = 'stylesheet';
           link1.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
@@ -61,13 +86,16 @@ async function loadLeafletWithHeat() {
           const script = document.createElement('script');
           script.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
           script.onload = () => {
-            console.log('✅ Leaflet.markercluster plugin loaded successfully.');
+            if (typeof window.L?.markerClusterGroup === 'function') {
+              L.markerClusterGroup = window.L.markerClusterGroup;
+            }
+            console.log('✅ Leaflet.markercluster plugin loaded and attached successfully.');
             resolve();
           };
-          script.onerror = () => reject(new Error('MarkerCluster failed to load'));
+          script.onerror = () => resolve();
           document.head.appendChild(script);
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('MarkerCluster timeout')), 3000))
+        new Promise((resolve) => setTimeout(resolve, 2000))
       ]);
     } catch (err) {
       console.warn('⚠️ Falling back to standard markers:', err.message);
@@ -374,28 +402,32 @@ export default function CivicHeatmap({ height = '420px' }) {
       }
 
       if (showHeat && filteredPoints.length > 0) {
-        const heatPoints = filteredPoints.map(p => {
-          let intensity = 0.5;
-          const sev = String(p.severity || '').toLowerCase();
-          if (sev === 'emergency' || sev === 'critical' || p.isEmergency) intensity = 1.0;
-          else if (sev === 'high') intensity = 0.8;
-          else if (sev === 'medium') intensity = 0.5;
-          else intensity = 0.3;
-          return [Number(p.lat), Number(p.lng), intensity];
-        });
+        if (typeof L.heatLayer === 'function') {
+          const heatPoints = filteredPoints.map(p => {
+            let intensity = 0.5;
+            const sev = String(p.severity || '').toLowerCase();
+            if (sev === 'emergency' || sev === 'critical' || p.isEmergency) intensity = 1.0;
+            else if (sev === 'high') intensity = 0.8;
+            else if (sev === 'medium') intensity = 0.5;
+            else intensity = 0.3;
+            return [Number(p.lat), Number(p.lng), intensity];
+          });
 
-        heatLayerRef.current = L.heatLayer(heatPoints, {
-          radius: 28,
-          blur: 20,
-          maxZoom: 16,
-          gradient: {
-            0.2: '#22c55e',
-            0.4: '#0ea5e9',
-            0.6: '#f59e0b',
-            0.8: '#f43f5e',
-            1.0: '#e11d48'
-          }
-        }).addTo(mapInstanceRef.current);
+          heatLayerRef.current = L.heatLayer(heatPoints, {
+            radius: 28,
+            blur: 20,
+            maxZoom: 16,
+            gradient: {
+              0.2: '#22c55e',
+              0.4: '#0ea5e9',
+              0.6: '#f59e0b',
+              0.8: '#f43f5e',
+              1.0: '#e11d48'
+            }
+          }).addTo(mapInstanceRef.current);
+        } else {
+          console.warn('[Heatmap] Leaflet heat plugin is unavailable; standard markers remain active.');
+        }
       }
 
       // 2. Update Markers

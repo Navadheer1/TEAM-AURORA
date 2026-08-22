@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  ShieldAlert, AlertTriangle, MapPin, Camera, Video, Mic, MicOff, 
+  ShieldAlert, ShieldCheck, AlertTriangle, MapPin, Camera, Video, Mic, MicOff, 
   Trash2, Play, Pause, Compass, CheckCircle, Home, WifiOff, 
   Clipboard, PhoneCall, Radio, Eye, Layers, ChevronRight, Sparkles,
   Flame, Waves, Building2, Wind, Car, Zap, Biohazard, ShieldX,
