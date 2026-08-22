@@ -1,43 +1,47 @@
-# Environment files
-.env
-.env.local
-*.env
-.env.*
-FIXED_backend.env
-
-# Secrets & Private Keys
-firebase-key.json
-*key.json
-serviceAccountKey.json
-*creds*.json
-*.pem
-*.key
-jwt_secret*
-
-# Dependencies
+# Node dependencies
 node_modules/
-bower_components/
-venv/
-.venv/
-env/
+frontend/node_modules/
+backend/node_modules/
+.npm
+.eslintcache
 
-# Python caching
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Builds and distribution
+# Production build outputs
 dist/
 build/
-out/
-.next/
+frontend/dist/
+frontend/build/
 
-# Databases & local files
-*.db
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+django_backend/__pycache__/
+django_backend/*/ __pycache__/
+django_backend/db.sqlite3
+django_backend/media/complaints/
+django_backend/gemini_debug.log
 *.sqlite3
-.dist/
-.idea/
-.vscode/
+
+# Environment & local secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+django_backend/.env
+backend/.env
+
+# IDE & OS files
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
