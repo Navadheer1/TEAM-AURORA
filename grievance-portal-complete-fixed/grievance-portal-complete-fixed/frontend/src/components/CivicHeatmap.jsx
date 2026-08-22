@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Map as MapIcon, Filter, RefreshCw, Layers, ShieldAlert, Activity,
   AlertTriangle, Crosshair, Navigation, Radio, CheckCircle, Flame,
-  Droplets, Zap, Shield, AlertOctagon
+  Droplets, Zap, Shield, AlertOctagon, RotateCcw, Search, Eye
 } from 'lucide-react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -77,6 +77,7 @@ async function loadLeafletWithHeat() {
   return L;
 }
 
+// Category tabs
 const HEATMAP_TABS = [
   { id: 'all', label: 'All Issues', icon: Layers },
   { id: 'roads', label: 'Roads', icon: Navigation },
@@ -95,7 +96,112 @@ const SEVERITY_COLORS = {
   Emergency: '#e11d48'  // Deep Rose
 };
 
-export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
+// Safe Category Normalization Matcher
+function matchesCategoryFilter(point, tabId) {
+  if (!point || tabId === 'all') return true;
+  
+  const cat = String(point.category || '').toLowerCase();
+  const subcat = String(point.subcategory || '').toLowerCase();
+  const desc = String(point.description || '').toLowerCase();
+  const combined = `${cat} ${subcat} ${desc}`;
+
+  switch (tabId) {
+    case 'roads':
+      return (
+        combined.includes('road') ||
+        combined.includes('pothole') ||
+        combined.includes('footpath') ||
+        combined.includes('sidewalk') ||
+        combined.includes('asphalt') ||
+        combined.includes('traffic')
+      );
+    case 'sanitation':
+      return (
+        combined.includes('garbage') ||
+        combined.includes('waste') ||
+        combined.includes('dump') ||
+        combined.includes('trash') ||
+        combined.includes('sanitation') ||
+        combined.includes('debris') ||
+        combined.includes('litter')
+      );
+    case 'water':
+      return (
+        combined.includes('water') ||
+        combined.includes('sewage') ||
+        combined.includes('drain') ||
+        combined.includes('flood') ||
+        combined.includes('pipe') ||
+        combined.includes('leak')
+      );
+    case 'electricity':
+      return (
+        combined.includes('light') ||
+        combined.includes('lamp') ||
+        combined.includes('electric') ||
+        combined.includes('power') ||
+        combined.includes('street_light') ||
+        combined.includes('streetlight') ||
+        combined.includes('wire')
+      );
+    case 'safety':
+      return (
+        cat.includes('crime') ||
+        cat.includes('corruption') ||
+        combined.includes('safety') ||
+        combined.includes('police') ||
+        combined.includes('bribe') ||
+        combined.includes('theft') ||
+        combined.includes('hazard')
+      );
+    case 'emergency':
+      return (
+        point.isEmergency === true ||
+        ['emergency', 'critical'].includes(String(point.severity || '').toLowerCase()) ||
+        cat.includes('fire') ||
+        combined.includes('disaster') ||
+        combined.includes('gas_leak') ||
+        combined.includes('flood')
+      );
+    default:
+      return true;
+  }
+}
+
+// Safe Severity Normalization Matcher
+function matchesSeverityFilter(point, selectedSev) {
+  if (!point || selectedSev === 'all') return true;
+  const pSev = String(point.severity || 'Medium').toLowerCase().trim();
+  const target = String(selectedSev).toLowerCase().trim();
+  
+  if (target === 'emergency' || target === 'critical') {
+    return pSev === 'emergency' || pSev === 'critical' || point.isEmergency === true;
+  }
+  return pSev === target;
+}
+
+// Safe Status Normalization Matcher
+function matchesStatusFilter(point, selectedStat) {
+  if (!point || selectedStat === 'all') return true;
+  const pStat = String(point.status || 'pending').toLowerCase().trim();
+  const target = String(selectedStat).toLowerCase().trim();
+
+  if (target === 'closed' || target === 'resolved') {
+    return pStat === 'closed' || pStat === 'resolved';
+  }
+  if (target === 'in_progress') {
+    return ['investigating', 'action_taken', 'in_progress', 'assigned'].includes(pStat);
+  }
+  if (target === 'pending') {
+    return ['pending', 'reported'].includes(pStat);
+  }
+  if (target === 'under_review') {
+    return pStat === 'under_review';
+  }
+  return pStat === target;
+}
+
+export default function CivicHeatmap({ height = '420px' }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const heatLayerRef = useRef(null);
@@ -111,51 +217,61 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
   const [showHeat, setShowHeat] = useState(true);
   const [showHotspots, setShowHotspots] = useState(true);
   const [mapMode, setMapMode] = useState('map'); // 'map' | 'satellite'
+  const [renderError, setRenderError] = useState(null);
 
   // Query complaint coordinates
-  const { data: heatmapData, isLoading, refetch, isFetching } = useQuery({
+  const { data: heatmapData, isLoading, refetch, isFetching, isError } = useQuery({
     queryKey: ['complaintsHeatmap'],
     queryFn: () => api.get('/complaints/heatmap').then(res => res.data.data),
     staleTime: 60000 // Cache for 1 min
   });
 
-  const rawPoints = heatmapData || [];
+  const rawPoints = Array.isArray(heatmapData) ? heatmapData : [];
 
-  // Filter complaints coordinates according to tabs & select filters
+  // Filter complaints coordinates safely in memory
   const filteredPoints = useMemo(() => {
-    return rawPoints.filter(p => {
-      // Tab matching
-      let matchesTab = true;
-      const subcat = (p.subcategory || '').toLowerCase();
-      const cat = (p.category || '').toLowerCase();
-      const desc = (p.description || '').toLowerCase();
-      const isEmerg = p.severity === 'Emergency' || p.severity === 'Critical' || p.isEmergency === true;
+    try {
+      return rawPoints.filter(p => {
+        if (!p || typeof p !== 'object') return false;
+        const validLat = p.lat != null && !isNaN(Number(p.lat));
+        const validLng = p.lng != null && !isNaN(Number(p.lng));
+        if (!validLat || !validLng) return false;
 
-      if (activeTab === 'roads') {
-        matchesTab = subcat.includes('road') || subcat.includes('pothole') || subcat.includes('footpath') || desc.includes('road') || desc.includes('pothole');
-      } else if (activeTab === 'sanitation') {
-        matchesTab = subcat.includes('garbage') || subcat.includes('waste') || subcat.includes('dump') || desc.includes('garbage') || desc.includes('waste');
-      } else if (activeTab === 'water') {
-        matchesTab = subcat.includes('water') || subcat.includes('sewage') || subcat.includes('drain') || subcat.includes('flood') || desc.includes('water') || desc.includes('leak');
-      } else if (activeTab === 'electricity') {
-        matchesTab = subcat.includes('light') || subcat.includes('electric') || subcat.includes('signal') || desc.includes('light') || desc.includes('power');
-      } else if (activeTab === 'safety') {
-        matchesTab = cat.includes('crime') || cat.includes('corruption') || cat.includes('safety') || subcat.includes('safety');
-      } else if (activeTab === 'emergency') {
-        matchesTab = isEmerg || cat.includes('fire');
-      }
+        const catMatch = matchesCategoryFilter(p, activeTab);
+        const sevMatch = matchesSeverityFilter(p, filterSeverity);
+        const statMatch = matchesStatusFilter(p, filterStatus);
 
-      // Dropdown filters
-      const matchesSev = filterSeverity === 'all' || p.severity?.toLowerCase() === filterSeverity.toLowerCase();
-      const matchesStat = filterStatus === 'all' || p.status?.toLowerCase() === filterStatus.toLowerCase();
-
-      return matchesTab && matchesSev && matchesStat;
-    });
+        return catMatch && sevMatch && statMatch;
+      });
+    } catch (err) {
+      console.error('⚠️ [Heatmap] Error filtering points:', err);
+      return [];
+    }
   }, [rawPoints, activeTab, filterSeverity, filterStatus]);
 
   // Calculate GeoVision Analytics safely
-  const hotspots = useMemo(() => identifyHotspots(filteredPoints), [filteredPoints]);
+  const hotspots = useMemo(() => {
+    try {
+      return identifyHotspots(filteredPoints);
+    } catch (err) {
+      console.warn('⚠️ [Heatmap] Hotspots calculation fallback:', err);
+      return [];
+    }
+  }, [filteredPoints]);
 
+  const hasActiveFilters = activeTab !== 'all' || filterSeverity !== 'all' || filterStatus !== 'all';
+
+  const resetAllFilters = useCallback((e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setActiveTab('all');
+    setFilterSeverity('all');
+    setFilterStatus('all');
+  }, []);
+
+  // Initialize Map once
   useEffect(() => {
     let mounted = true;
     let map = null;
@@ -165,8 +281,8 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
         const Leaflet = await loadLeafletWithHeat();
         if (!mounted || !mapContainerRef.current || mapInstanceRef.current) return;
 
-        // Default center in Andhra Pradesh / India
-        const defaultCenter = [16.3067, 80.4365]; // Guntur / AP coordinates
+        // Default center in Andhra Pradesh (Guntur)
+        const defaultCenter = [16.3067, 80.4365];
 
         map = Leaflet.map(mapContainerRef.current, {
           center: defaultCenter,
@@ -196,14 +312,15 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
 
         hotspotsGroupRef.current = Leaflet.layerGroup().addTo(map);
 
-        // Center map to resolved points if available
-        if (filteredPoints.length > 0) {
-          const latSum = filteredPoints.reduce((sum, p) => sum + p.lat, 0);
-          const lngSum = filteredPoints.reduce((sum, p) => sum + p.lng, 0);
-          map.setView([latSum / filteredPoints.length, lngSum / filteredPoints.length], 12);
+        // Center map to initial points if available
+        if (rawPoints.length > 0) {
+          const latSum = rawPoints.reduce((sum, p) => sum + Number(p.lat || 16.3067), 0);
+          const lngSum = rawPoints.reduce((sum, p) => sum + Number(p.lng || 80.4365), 0);
+          map.setView([latSum / rawPoints.length, lngSum / rawPoints.length], 12);
         }
       } catch (err) {
         console.error('Failed to initialize Leaflet Heatmap:', err);
+        setRenderError('Unable to load map tiles.');
       }
     };
 
@@ -221,39 +338,52 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
     };
   }, []);
 
-  // Update Base Layer (Map vs Satellite)
+  // Update Base Layer (Map vs Satellite) without recreating map
   useEffect(() => {
     if (!mapInstanceRef.current || !osmTileRef.current || !satTileRef.current) return;
-    if (mapMode === 'satellite') {
-      mapInstanceRef.current.removeLayer(osmTileRef.current);
-      mapInstanceRef.current.addLayer(satTileRef.current);
-    } else {
-      mapInstanceRef.current.removeLayer(satTileRef.current);
-      mapInstanceRef.current.addLayer(osmTileRef.current);
+    try {
+      if (mapMode === 'satellite') {
+        if (mapInstanceRef.current.hasLayer(osmTileRef.current)) {
+          mapInstanceRef.current.removeLayer(osmTileRef.current);
+        }
+        if (!mapInstanceRef.current.hasLayer(satTileRef.current)) {
+          mapInstanceRef.current.addLayer(satTileRef.current);
+        }
+      } else {
+        if (mapInstanceRef.current.hasLayer(satTileRef.current)) {
+          mapInstanceRef.current.removeLayer(satTileRef.current);
+        }
+        if (!mapInstanceRef.current.hasLayer(osmTileRef.current)) {
+          mapInstanceRef.current.addLayer(osmTileRef.current);
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Heatmap] Layer toggle error:', err);
     }
   }, [mapMode]);
 
-  // Render Markers & Heatmap Layers
+  // Update Markers & Heatmap Layer in-place when filters change
   useEffect(() => {
     if (!mapInstanceRef.current || !L) return;
 
-    // 1. Update Heat Layer
-    if (heatLayerRef.current) {
-      mapInstanceRef.current.removeLayer(heatLayerRef.current);
-      heatLayerRef.current = null;
-    }
+    try {
+      // 1. Update Heat Layer
+      if (heatLayerRef.current) {
+        mapInstanceRef.current.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
 
-    if (showHeat && filteredPoints.length > 0) {
-      const heatPoints = filteredPoints.map(p => {
-        let intensity = 0.5;
-        if (p.severity === 'Emergency' || p.severity === 'Critical') intensity = 1.0;
-        else if (p.severity === 'High') intensity = 0.8;
-        else if (p.severity === 'Medium') intensity = 0.5;
-        else intensity = 0.3;
-        return [p.lat, p.lng, intensity];
-      });
+      if (showHeat && filteredPoints.length > 0) {
+        const heatPoints = filteredPoints.map(p => {
+          let intensity = 0.5;
+          const sev = String(p.severity || '').toLowerCase();
+          if (sev === 'emergency' || sev === 'critical' || p.isEmergency) intensity = 1.0;
+          else if (sev === 'high') intensity = 0.8;
+          else if (sev === 'medium') intensity = 0.5;
+          else intensity = 0.3;
+          return [Number(p.lat), Number(p.lng), intensity];
+        });
 
-      try {
         heatLayerRef.current = L.heatLayer(heatPoints, {
           radius: 28,
           blur: 20,
@@ -266,99 +396,103 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
             1.0: '#e11d48'
           }
         }).addTo(mapInstanceRef.current);
-      } catch (err) {
-        console.warn('⚠️ HeatLayer render warning:', err.message);
       }
-    }
 
-    // 2. Update Markers
-    if (markersGroupRef.current) {
-      markersGroupRef.current.clearLayers();
+      // 2. Update Markers
+      if (markersGroupRef.current) {
+        markersGroupRef.current.clearLayers();
 
-      if (showMarkers) {
-        filteredPoints.forEach(p => {
-          const color = SEVERITY_COLORS[p.severity] || '#0ea5e9';
-          
-          // Modern SVG Pin
-          const markerHtml = `
-            <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;">
-              <div style="position: absolute; width: 22px; height: 22px; background-color: ${color}; border-radius: 50%; opacity: 0.3; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-              <div style="width: 14px; height: 14px; background-color: ${color}; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
-            </div>
-          `;
+        if (showMarkers && filteredPoints.length > 0) {
+          filteredPoints.forEach(p => {
+            const sevKey = p.severity || 'Medium';
+            const color = SEVERITY_COLORS[sevKey] || SEVERITY_COLORS.Medium;
+            
+            const markerHtml = `
+              <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;">
+                <div style="position: absolute; width: 22px; height: 22px; background-color: ${color}; border-radius: 50%; opacity: 0.3; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                <div style="width: 14px; height: 14px; background-color: ${color}; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+              </div>
+            `;
 
-          const customIcon = L.divIcon({
-            html: markerHtml,
-            className: 'custom-civic-pin',
-            iconSize: [26, 26],
-            iconAnchor: [13, 13]
+            const customIcon = L.divIcon({
+              html: markerHtml,
+              className: 'custom-civic-pin',
+              iconSize: [26, 26],
+              iconAnchor: [13, 13]
+            });
+
+            const marker = L.marker([Number(p.lat), Number(p.lng)], { icon: customIcon });
+
+            const popupContent = `
+              <div style="font-family: inherit; font-size: 12px; min-width: 190px; padding: 4px 0;">
+                <div style="font-weight: 800; font-size: 13px; color: #0f172a; margin-bottom: 2px;">
+                  ${p.subcategory ? p.subcategory.replace(/_/g, ' ').toUpperCase() : (p.category || 'CIVIC ISSUE').toUpperCase()}
+                </div>
+                <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">
+                  📍 ${p.address && p.address !== 'N/A' ? p.address : `${p.district || ''}, ${p.state || ''}`}
+                </div>
+                <div style="display: flex; gap: 4px; margin-bottom: 6px;">
+                  <span style="background: #f1f5f9; color: #334155; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 10px;">
+                    ID: #${p.complaintId || p.id?.substring(0, 8)}
+                  </span>
+                  <span style="background: ${color}20; color: ${color}; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 10px;">
+                    ${p.severity || 'Medium'}
+                  </span>
+                </div>
+                ${p.description ? `<p style="color: #475569; font-size: 11px; margin: 0 0 6px 0; line-height: 1.3;">${p.description.substring(0, 80)}${p.description.length > 80 ? '...' : ''}</p>` : ''}
+                <a href="/track?id=${p.complaintId || p.id}" style="display: inline-block; color: #2563eb; font-weight: 700; font-size: 11px; text-decoration: none;">
+                  Track Incident →
+                </a>
+              </div>
+            `;
+
+            marker.bindPopup(popupContent);
+            markersGroupRef.current.addLayer(marker);
           });
-
-          const marker = L.marker([p.lat, p.lng], { icon: customIcon });
-
-          const popupContent = `
-            <div style="font-family: inherit; font-size: 12px; min-width: 190px; padding: 4px 0;">
-              <div style="font-weight: 800; font-size: 13px; color: #0f172a; margin-bottom: 2px;">
-                ${p.subcategory ? p.subcategory.replace(/_/g, ' ').toUpperCase() : (p.category || 'CIVIC ISSUE').toUpperCase()}
-              </div>
-              <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">
-                📍 ${p.address || `${p.district || ''}, ${p.state || ''}`}
-              </div>
-              <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-                <span style="background: #f1f5f9; color: #334155; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 10px;">
-                  ID: #${p.complaintId || p.id?.substring(0, 8)}
-                </span>
-                <span style="background: ${color}20; color: ${color}; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 10px;">
-                  ${p.severity || 'Medium'}
-                </span>
-              </div>
-              ${p.description ? `<p style="color: #475569; font-size: 11px; margin: 0 0 6px 0; line-height: 1.3;">${p.description.substring(0, 80)}${p.description.length > 80 ? '...' : ''}</p>` : ''}
-              <a href="/track?id=${p.complaintId || p.id}" style="display: inline-block; color: #2563eb; font-weight: 700; font-size: 11px; text-decoration: none;">
-                Track Incident →
-              </a>
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
-          markersGroupRef.current.addLayer(marker);
-        });
+        }
       }
-    }
 
-    // 3. Update Hotspots Circles
-    if (hotspotsGroupRef.current) {
-      hotspotsGroupRef.current.clearLayers();
+      // 3. Update Hotspots Circles
+      if (hotspotsGroupRef.current) {
+        hotspotsGroupRef.current.clearLayers();
 
-      if (showHotspots && hotspots.length > 0) {
-        hotspots.forEach(h => {
-          const circleColor = h.riskLevel === 'High' ? '#ef4444' : '#f59e0b';
-          const circle = L.circle([h.lat, h.lng], {
-            color: circleColor,
-            fillColor: circleColor,
-            fillOpacity: 0.15,
-            radius: h.radius || 350,
-            weight: 1.5,
-            dashArray: '4, 4'
+        if (showHotspots && hotspots.length > 0) {
+          hotspots.forEach(h => {
+            const circleColor = h.riskLevel === 'High' ? '#ef4444' : '#f59e0b';
+            const circle = L.circle([Number(h.lat), Number(h.lng)], {
+              color: circleColor,
+              fillColor: circleColor,
+              fillOpacity: 0.15,
+              radius: h.radius || 350,
+              weight: 1.5,
+              dashArray: '4, 4'
+            });
+
+            circle.bindTooltip(`<b>${h.riskLevel} Intensity Civic Zone</b><br/>${h.count} incidents clustered`, {
+              permanent: false,
+              direction: 'top',
+              className: 'hotspot-tooltip'
+            });
+
+            hotspotsGroupRef.current.addLayer(circle);
           });
-
-          circle.bindTooltip(`<b>${h.riskLevel} Intensity Civic Zone</b><br/>${h.count} incidents clustered`, {
-            permanent: false,
-            direction: 'top',
-            className: 'hotspot-tooltip'
-          });
-
-          hotspotsGroupRef.current.addLayer(circle);
-        });
+        }
       }
+    } catch (err) {
+      console.error('⚠️ [Heatmap] Error updating map layers:', err);
     }
   }, [filteredPoints, showHeat, showMarkers, showHotspots, hotspots]);
 
-  const handleRefetch = async () => {
+  const handleRefetch = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     try {
       await refetch();
       toast.success('Live civic telemetry refreshed');
-    } catch (e) {
-      toast.error('Failed to refresh live feed');
+    } catch (err) {
+      toast.error('Failed to refresh telemetry feed');
     }
   };
 
@@ -388,20 +522,22 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
           {/* Map / Satellite */}
           <div className="flex items-center h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold">
             <button
-              onClick={() => setMapMode('map')}
+              type="button"
+              onClick={(e) => { e.preventDefault(); setMapMode('map'); }}
               className={`px-2.5 py-1 rounded-md transition-all ${
                 mapMode === 'map'
-                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Map
             </button>
             <button
-              onClick={() => setMapMode('satellite')}
+              type="button"
+              onClick={(e) => { e.preventDefault(); setMapMode('satellite'); }}
               className={`px-2.5 py-1 rounded-md transition-all ${
                 mapMode === 'satellite'
-                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -410,9 +546,10 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
           </div>
 
           <button
+            type="button"
             onClick={handleRefetch}
             disabled={isLoading || isFetching}
-            className="btn-secondary h-8 py-0 px-2.5 text-xs font-semibold flex items-center gap-1.5"
+            className="btn-secondary h-8 py-0 px-2.5 text-xs font-semibold flex items-center gap-1.5 active:scale-95"
             title="Refresh Map Telemetry"
           >
             <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
@@ -429,10 +566,15 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab(tab.id);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 active:scale-95 ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-100 dark:ring-blue-900/40'
+                  ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-100 dark:ring-blue-900/40 font-bold'
                   : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
@@ -443,7 +585,7 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
         })}
       </div>
 
-      {/* Secondary Controls Toolbar (Severity, Status, Layers) */}
+      {/* Secondary Controls Toolbar (Severity, Status, Layers & Reset) */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
           {/* Severity filter */}
@@ -451,14 +593,14 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
             <span className="text-slate-400 font-medium">Severity:</span>
             <select
               value={filterSeverity}
-              onChange={e => setFilterSeverity(e.target.value)}
+              onChange={(e) => setFilterSeverity(e.target.value)}
               className="py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium"
             >
               <option value="all">All Severities</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Emergency">Emergency</option>
+              <option value="emergency">Emergency / Critical</option>
+              <option value="high">High Risk</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low / Routine</option>
             </select>
           </div>
 
@@ -467,17 +609,28 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
             <span className="text-slate-400 font-medium">Status:</span>
             <select
               value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value)}
               className="py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium"
             >
               <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
+              <option value="pending">Pending / Reported</option>
               <option value="under_review">Under Review</option>
-              <option value="investigating">Investigating</option>
-              <option value="action_taken">Action Taken</option>
-              <option value="closed">Resolved</option>
+              <option value="in_progress">In Progress / Assigned</option>
+              <option value="closed">Resolved / Closed</option>
             </select>
           </div>
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="py-1 px-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw size={11} />
+              <span>Clear Filters</span>
+            </button>
+          )}
         </div>
 
         {/* Layer Toggles */}
@@ -503,18 +656,58 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
         </div>
       </div>
 
-      {/* Map Canvas */}
+      {/* Map Canvas with Overlays */}
       <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800" style={{ height }}>
+        
+        {/* Loading Overlay */}
         {isLoading && (
-          <div className="absolute inset-0 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-2">
+          <div className="absolute inset-0 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-2">
             <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
             <span className="text-xs font-semibold text-blue-600 animate-pulse">Loading live telemetry coordinates...</span>
           </div>
         )}
 
+        {/* Error Overlay */}
+        {renderError && (
+          <div className="absolute inset-0 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-2 p-4 text-center">
+            <AlertTriangle size={24} className="text-amber-500" />
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Unable to update map</h4>
+            <p className="text-xs text-slate-500 max-w-xs">{renderError}</p>
+            <button
+              type="button"
+              onClick={handleRefetch}
+              className="btn-primary text-xs py-1.5 px-3 uppercase font-bold mt-1"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty Filter State Overlay (Never blank page) */}
+        {!isLoading && !renderError && filteredPoints.length === 0 && (
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center text-white">
+            <div className="w-11 h-11 rounded-2xl bg-white/10 text-white flex items-center justify-center mb-2.5 border border-white/20">
+              <Search size={20} />
+            </div>
+            <h4 className="text-sm font-bold text-white mb-1">No incidents found</h4>
+            <p className="text-xs text-slate-200/80 max-w-xs mb-3">
+              There are no reported civic incidents matching the selected filters.
+            </p>
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <RotateCcw size={12} />
+              <span>Clear Filters</span>
+            </button>
+          </div>
+        )}
+
+        {/* Leaflet Map DOM Element */}
         <div ref={mapContainerRef} className="w-full h-full" style={{ zIndex: 0 }} />
 
-        {/* Legend */}
+        {/* Legend Overlay */}
         <div className="absolute bottom-3 left-3 z-10 bg-white/95 dark:bg-slate-900/95 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-lg text-[10px] space-y-1 font-semibold text-slate-700 dark:text-slate-300 backdrop-blur-sm">
           <div className="font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             Incident Severity
@@ -536,7 +729,9 @@ export default function CivicHeatmap({ height = '420px', onSelectIncident }) {
             <span>Low / Routine</span>
           </div>
           <div className="pt-1 border-t border-slate-100 dark:border-slate-800 text-[9px] text-slate-400 font-normal">
-            Displaying {filteredPoints.length} of {rawPoints.length} incidents
+            {filteredPoints.length > 0 
+              ? `Displaying ${filteredPoints.length} of ${rawPoints.length} incidents`
+              : `No incidents match selected filters (${rawPoints.length} total)`}
           </div>
         </div>
       </div>
