@@ -184,12 +184,33 @@ complaintRouter.get('/ip-geolocation', getIpGeolocation);
 complaintRouter.get('/reverse-geocode', reverseGeocode);
 complaintRouter.post('/reverse-geocode', reverseGeocode);
 
+// ============= EMERGENCY & AI DETECTION ROUTES =============
+const emergencyRouter = express.Router();
+const {
+  getAuthorizedCameras,
+  toggleCameraAI,
+  detectEmergencyFrame,
+  createEmergencyIncident,
+  getEmergencyIncidents,
+  updateEmergencyStatus,
+  getEmergencyTelemetry
+} = require('../controllers/emergencyController');
+
+emergencyRouter.get('/cameras', getAuthorizedCameras);
+emergencyRouter.put('/cameras/:id/toggle-ai', toggleCameraAI);
+emergencyRouter.post('/detect-frame', memoryUpload.single('image'), detectEmergencyFrame);
+emergencyRouter.post('/incidents', optionalAuth, createEmergencyIncident);
+emergencyRouter.get('/incidents', getEmergencyIncidents);
+emergencyRouter.put('/incidents/:id/status', optionalAuth, updateEmergencyStatus);
+emergencyRouter.get('/telemetry', getEmergencyTelemetry);
+
 router.use('/auth', authRouter);
 router.use('/complaints', complaintRouter);
 router.use('/location', locationRouter);
 router.use('/admin', adminRouter);
 router.use('/chatbot', chatbotRouter);
 router.use('/reputation', reputationRouter);
+router.use('/emergency', emergencyRouter);
 router.get('/reverse-geocode', reverseGeocode);
 router.get('/ip-geolocation', getIpGeolocation);
 router.post('/openai-voice/chat', memoryUpload.single('file'), handleVoiceChat);
