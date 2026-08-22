@@ -27,6 +27,7 @@
     "twilio": "^4.11.0",
     "uuid": "^9.0.0",
     "winston": "^3.9.0",
+    "ws": "^8.21.3",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
