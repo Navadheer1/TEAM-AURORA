@@ -6,7 +6,7 @@ const { register, login, googleLogin, getProfile, updateProfile, changePassword,
 const { markAllNotificationsRead } = require('../controllers/notificationController');
 const { submitComplaint, trackComplaint, getMyComplaints, getComplaintDetail, getAssignedComplaints, updateComplaintStatus, getAnalytics, getHeatmapData, checkDuplicateComplaint } = require('../controllers/complaintController');
 const { getAllUsers, createAuthority, getAllComplaints, reassignComplaint, toggleUserStatus, getAllAuthorities, getFullAnalytics } = require('../controllers/adminController');
-const { sendChatMessage, getChatHistory, clearChatHistory, getSuggestionForComplaint, getChatbotStatus } = require('../controllers/chatbotController');
+const { sendChatMessage, confirmComplaintSubmission, trackComplaintViaAgent, getSuggestionForComplaint, getChatbotStatus, synthesizeSpeech } = require('../controllers/chatbotController');
 const { detectComplaintIssue } = require('../controllers/aiController');
 
 // Import middleware
@@ -152,10 +152,12 @@ const chatbotRouter = express.Router();
 
 // Chatbot endpoints (public and authenticated)
 chatbotRouter.get('/status', getChatbotStatus);
-chatbotRouter.post('/message', sendChatMessage);
-chatbotRouter.get('/history', getChatHistory);
-chatbotRouter.delete('/history', clearChatHistory);
+chatbotRouter.post('/message', optionalAuth, sendChatMessage);
+chatbotRouter.post('/confirm-complaint', optionalAuth, confirmComplaintSubmission);
+chatbotRouter.get('/track/:complaintId', optionalAuth, trackComplaintViaAgent);
+chatbotRouter.get('/suggest', getSuggestionForComplaint);
 chatbotRouter.post('/suggest', getSuggestionForComplaint);
+chatbotRouter.post('/tts', synthesizeSpeech);
 
 // ============= MOUNT ROUTES =============
 const { handleVoiceChat } = require('../controllers/openaiVoiceController');
@@ -284,7 +286,8 @@ router.post('/voice-ai', async (req, res) => {
   }
 });
 
-// POST /api/chat - Unified Groq Chatbot Endpoint
-router.post('/chat', sendChatMessage);
+// POST /api/chat - Unified Gemini AI Agent Endpoint
+router.post('/chat', optionalAuth, sendChatMessage);
+router.post('/chat/tts', synthesizeSpeech);
 
 module.exports = router;

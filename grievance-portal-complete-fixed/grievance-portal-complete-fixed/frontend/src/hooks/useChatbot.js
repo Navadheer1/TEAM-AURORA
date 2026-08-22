@@ -9,7 +9,7 @@ const useChatbot = () => {
   const [error, setError] = useState(null);
 
   const getChatbotBaseURL = () => {
-    const raw = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const raw = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
     const clean = raw.endsWith('/api') ? raw : `${raw}/api`;
     return `${clean}/chatbot`;
   };
