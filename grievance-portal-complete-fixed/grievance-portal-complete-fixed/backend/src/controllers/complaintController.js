@@ -484,9 +484,15 @@ const getHeatmapData = asyncHandler(async (req, res) => {
       lat: data.location?.lat ? parseFloat(data.location.lat) : null,
       lng: data.location?.lng ? parseFloat(data.location.lng) : null,
       category: data.category,
+      subcategory: data.subcategory || '',
       severity: data.severity || 'Medium',
-      status: data.status,
-      address: data.location?.address || 'N/A'
+      status: data.status || 'pending',
+      address: data.location?.address || 'N/A',
+      district: data.location?.district || '',
+      state: data.location?.state || '',
+      description: data.description || '',
+      createdAt: data.createdAt,
+      isEmergency: data.isEmergency || false
     };
   }).filter((p) => p.lat !== null && p.lng !== null);
 
