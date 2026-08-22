@@ -7,7 +7,7 @@ import {
   Clipboard, PhoneCall, Radio, Eye, Layers, ChevronRight, Sparkles,
   Flame, Waves, Building2, Wind, Car, Zap, Biohazard, ShieldX,
   RefreshCw, Check, ArrowRight, Activity, Cpu, Bell, CheckCircle2,
-  Sliders, Globe, Search, Terminal, AlertOctagon
+  Sliders, Globe, Search, Terminal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DashboardLayout from '../../components/DashboardLayout';
@@ -488,77 +488,7 @@ export default function EmergencyReport() {
           </div>
         </div>
 
-        {/* 2. EMERGENCY KPI METRICS STRIP */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-          
-          <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center border border-rose-200 dark:border-rose-800">
-              <AlertOctagon size={18} className="animate-pulse" />
-            </div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-display">
-                {incidents.filter(i => i.severity === 'Critical').length || 3}
-              </div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Critical</div>
-              <div className="text-[10px] text-slate-400">Immediate threat</div>
-            </div>
-          </div>
-
-          <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center border border-amber-200 dark:border-amber-800">
-              <ShieldAlert size={18} />
-            </div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-display">
-                {incidents.filter(i => i.severity === 'High').length || 8}
-              </div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200">High Risk</div>
-              <div className="text-[10px] text-slate-400">Active monitoring</div>
-            </div>
-          </div>
-
-          <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center border border-blue-200 dark:border-blue-800">
-              <Cpu size={18} />
-            </div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-display">
-                {incidents.filter(i => i.source === 'ai_camera' || i.source === 'live_webcam').length || 14}
-              </div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200">AI Detected</div>
-              <div className="text-[10px] text-slate-400">Vision telemetry</div>
-            </div>
-          </div>
-
-          <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center border border-purple-200 dark:border-purple-800">
-              <CheckCircle2 size={18} />
-            </div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-display">
-                {incidents.filter(i => i.supportingSignalsCount > 1).length || 21}
-              </div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Multi-Verified</div>
-              <div className="text-[10px] text-slate-400">Cross-corroborated</div>
-            </div>
-          </div>
-
-          <div className="card p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm rounded-2xl flex items-center gap-3 col-span-2 sm:col-span-1">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
-              <CheckCircle size={18} />
-            </div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-display">
-                {incidents.filter(i => i.status === 'closed' || i.status === 'resolved').length || 23}
-              </div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Resolved Today</div>
-              <div className="text-[10px] text-slate-400">Cleared sectors</div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* 3. NAVIGATION TABS (Command Center vs AI Detection Lab vs SOS Wizard vs CCTV Registry) */}
+        {/* 2. NAVIGATION TABS (Command Center vs AI Detection Lab vs SOS Wizard vs CCTV Registry) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           <button
             type="button"
