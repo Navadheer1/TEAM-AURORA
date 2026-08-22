@@ -112,7 +112,8 @@ complaintRouter.get('/heatmap', getHeatmapData);
 // Submit complaint (optional auth for anonymous)
 complaintRouter.post('/', optionalAuth, upload.array('attachments', 5), complaintValidator, submitComplaint);
 
-// AI Photo Issue Detection
+// AI Multimodal Photo Issue Detection
+complaintRouter.post('/analyze-image', optionalAuth, upload.single('image'), detectComplaintIssue);
 complaintRouter.post('/detect-issue', optionalAuth, upload.single('image'), detectComplaintIssue);
 
 // Check duplicate complaint

@@ -73,6 +73,25 @@ export const CATEGORIES = {
   },
 };
 
+// ======= Centralized AI Vision Categories =======
+export const AI_VISION_CATEGORIES = [
+  { value: 'Road / Pothole', label: 'Road / Pothole', icon: '🛣️', category: 'civic_issue', subcategory: 'road_damage' },
+  { value: 'Garbage / Waste Management', label: 'Garbage / Waste Management', icon: '🗑️', category: 'civic_issue', subcategory: 'garbage' },
+  { value: 'Streetlight', label: 'Streetlight', icon: '💡', category: 'civic_issue', subcategory: 'street_light' },
+  { value: 'Drainage / Sewage', label: 'Drainage / Sewage', icon: '🚰', category: 'civic_issue', subcategory: 'sewage' },
+  { value: 'Water Supply', label: 'Water Supply', icon: '💧', category: 'civic_issue', subcategory: 'water_supply' },
+  { value: 'Traffic Signal', label: 'Traffic Signal', icon: '🚦', category: 'civic_issue', subcategory: 'street_light' },
+  { value: 'Broken Footpath', label: 'Broken Footpath', icon: '🚶', category: 'civic_issue', subcategory: 'road_damage' },
+  { value: 'Public Infrastructure', label: 'Public Infrastructure', icon: '🏛️', category: 'civic_issue', subcategory: 'park_maintenance' },
+  { value: 'Illegal Dumping', label: 'Illegal Dumping', icon: '⚠️', category: 'civic_issue', subcategory: 'garbage' },
+  { value: 'Flooding / Waterlogging', label: 'Flooding / Waterlogging', icon: '🌊', category: 'civic_issue', subcategory: 'sewage' },
+  { value: 'Tree / Fallen Tree', label: 'Tree / Fallen Tree', icon: '🌳', category: 'civic_issue', subcategory: 'park_maintenance' },
+  { value: 'Public Safety', label: 'Public Safety', icon: '🛡️', category: 'crime', subcategory: 'other_crime' },
+  { value: 'Corruption / Bribery', label: 'Corruption / Bribery', icon: '⚖️', category: 'corruption', subcategory: 'bribery' },
+  { value: 'Fire Safety Hazard', label: 'Fire Safety Hazard', icon: '🔥', category: 'fire', subcategory: 'safety_hazard' },
+  { value: 'Other', label: 'Other Civic Issue', icon: '📌', category: 'civic_issue', subcategory: 'other_civic' },
+];
+
 // ======= Status Labels =======
 export const STATUS_LABELS = {
   pending: { label: 'Pending', color: 'amber', description: 'Complaint received, awaiting review' },

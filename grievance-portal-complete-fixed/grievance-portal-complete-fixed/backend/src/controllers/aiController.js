@@ -1,10 +1,10 @@
-const { detectIssueFromImage } = require('../services/openaiVisionService');
+const { detectIssueFromImage, ALLOWED_CATEGORIES } = require('../services/openaiVisionService');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 
 /**
- * Detect civic issues from an uploaded photo using OpenAI Vision API
- * 
- * POST /api/complaints/detect-issue
+ * Multimodal AI Image Analysis for Civic Grievances
+ * POST /api/complaints/analyze-image
+ * POST /api/complaints/detect-issue (alias)
  */
 const detectComplaintIssue = asyncHandler(async (req, res) => {
   // 1. Verify file was uploaded
@@ -13,36 +13,48 @@ const detectComplaintIssue = asyncHandler(async (req, res) => {
   }
 
   // 2. Validate file type is image
-  if (!req.file.mimetype.startsWith('image/')) {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+  if (!allowedMimeTypes.includes(req.file.mimetype.toLowerCase()) && !req.file.mimetype.startsWith('image/')) {
     throw new AppError('Invalid file type. Only image files (JPEG, PNG, WEBP) are supported.', 400);
   }
 
-  console.log(`📷 [AIController] Vision request received. File: ${req.file.originalname} (${req.file.size} bytes)`);
+  // 3. Validate file size (Max 15MB)
+  if (req.file.size > 15 * 1024 * 1024) {
+    throw new AppError('File is too large. Image must be under 15MB for AI analysis.', 400);
+  }
+
+  console.log(`📷 [AIController] Multimodal Vision request received: ${req.file.originalname} (${req.file.size} bytes, ${req.file.mimetype})`);
 
   try {
-    // 3. Call OpenAI Vision Service to detect issue
     const result = await detectIssueFromImage(req.file.buffer, req.file.mimetype, req.file.originalname);
 
-    // 4. Return formatted response
+    const payload = {
+      category: result.category,
+      description: result.description,
+      severity: result.severity,
+      confidence: result.confidence,
+      observations: result.observations || [],
+      is_complaint: result.is_complaint,
+      mappedCategory: result.mappedCategory,
+      mappedSubcategory: result.mappedSubcategory,
+      detectedCategory: result.category,
+      reason: result.description,
+      engine: result.engine
+    };
+
     return res.status(200).json({
       success: true,
       message: 'AI Photo Analysis completed successfully.',
-      data: {
-        detectedCategory: result.detectedCategory,
-        confidence: result.confidence,
-        reason: result.reason,
-        severity: result.severity,
-        severityReason: result.severityReason,
-        mappedCategory: result.mappedCategory,
-        mappedSubcategory: result.mappedSubcategory
-      }
+      analysis: payload,
+      data: payload // Backward compatibility with previous clients
     });
   } catch (error) {
-    console.error('❌ [AIController] Vision detection failed:', error.message);
-    throw new AppError(`AI Vision analysis failed: ${error.message}`, 500);
+    console.error('❌ [AIController] Vision analysis failed:', error.message);
+    throw new AppError(error.message || 'AI Vision analysis failed.', 500);
   }
 });
 
 module.exports = {
-  detectComplaintIssue
+  detectComplaintIssue,
+  ALLOWED_CATEGORIES
 };
