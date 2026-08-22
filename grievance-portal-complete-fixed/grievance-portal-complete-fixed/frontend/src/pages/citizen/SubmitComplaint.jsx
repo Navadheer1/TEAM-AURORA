@@ -11,18 +11,11 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/DashboardLayout';
 import api from '../../utils/api';
-import { CATEGORIES, INDIAN_STATES } from '../../utils/constants';
+import { CATEGORIES, INDIAN_STATES, DISTRICTS_MAP } from '../../utils/constants';
 import { saveOfflineComplaint } from '../../utils/indexedDb';
 import { useTranslation } from '../../utils/i18n';
 
 const STEPS = ['Category', 'Description', 'Location', 'Attachments', 'Review', 'Success'];
-
-const DISTRICTS_MAP = {
-  'andhra pradesh': ['Guntur', 'Krishna', 'Visakhapatnam', 'East Godavari', 'West Godavari', 'Kurnool', 'Kadapa', 'Chittoor', 'Nellore'],
-  telangana: ['Hyderabad', 'Warangal', 'Khammam', 'Karimnagar', 'Nizamabad', 'Rangareddy'],
-  maharashtra: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Thane'],
-  karnataka: ['Bengaluru', 'Mysuru', 'Hubli', 'Mangaluru', 'Belagavi'],
-};
 
 export default function SubmitComplaint() {
   const { t } = useTranslation();
@@ -145,9 +138,9 @@ export default function SubmitComplaint() {
 
   const matchStateAndDistrict = (detectedState, detectedDistrict, rawAddressData) => {
     const cleanStr = (str) => {
-      if (!str) return '';
+      if (!str || typeof str !== 'string') return '';
       return str.toLowerCase()
-        .replace(/\b(state|district|division|city|corporation|union territory|ut)\b/gi, '')
+        .replace(/\b(state|district|division|city|corporation|union territory|ut|sub-district|taluk|tehsil|zone)\b/gi, '')
         .trim();
     };
 
@@ -157,7 +150,8 @@ export default function SubmitComplaint() {
     let matchedState = '';
     for (const s of INDIAN_STATES) {
       const sLower = s.toLowerCase();
-      if (sLower === cleanState || sLower.includes(cleanState) || cleanState.includes(sLower)) {
+      const sClean = cleanStr(s);
+      if (sLower === cleanState || sClean === cleanState || sLower.includes(cleanState) || (cleanState && cleanState.includes(sClean))) {
         matchedState = sLower;
         break;
       }
@@ -166,9 +160,9 @@ export default function SubmitComplaint() {
     if (!matchedState && rawAddressData) {
       const addressValues = Object.values(rawAddressData).map(v => typeof v === 'string' ? cleanStr(v) : '');
       for (const s of INDIAN_STATES) {
-        const sLower = s.toLowerCase();
-        if (addressValues.includes(sLower)) {
-          matchedState = sLower;
+        const sClean = cleanStr(s);
+        if (addressValues.includes(sClean) || addressValues.some(v => v && (v.includes(sClean) || sClean.includes(v)))) {
+          matchedState = s.toLowerCase();
           break;
         }
       }
@@ -179,20 +173,22 @@ export default function SubmitComplaint() {
       const validDistricts = DISTRICTS_MAP[matchedState];
       for (const d of validDistricts) {
         const dLower = d.toLowerCase();
-        if (dLower === cleanDistrict || dLower.includes(cleanDistrict) || cleanDistrict.includes(dLower)) {
+        const dClean = cleanStr(d);
+        if (dLower === cleanDistrict || dClean === cleanDistrict || dLower.includes(cleanDistrict) || (cleanDistrict && cleanDistrict.includes(dClean))) {
           matchedDistrict = dLower;
           break;
         }
       }
 
       if (!matchedDistrict && rawAddressData) {
-        const searchKeys = ['county', 'state_district', 'city', 'suburb', 'town', 'village', 'municipality'];
+        const searchKeys = ['district', 'county', 'state_district', 'city', 'suburb', 'town', 'village', 'municipality', 'locality', 'residential'];
         for (const key of searchKeys) {
           const value = cleanStr(rawAddressData[key]);
           if (value) {
             for (const d of validDistricts) {
               const dLower = d.toLowerCase();
-              if (dLower === value || dLower.includes(value) || value.includes(dLower)) {
+              const dClean = cleanStr(d);
+              if (dLower === value || dClean === value || dLower.includes(value) || value.includes(dClean)) {
                 matchedDistrict = dLower;
                 break;
               }
@@ -203,39 +199,34 @@ export default function SubmitComplaint() {
       }
     }
 
+    if (!matchedDistrict && cleanDistrict) {
+      matchedDistrict = cleanDistrict;
+    }
+
     return { matchedState, matchedDistrict };
   };
 
   const reverseGeocode = async (lat, lng) => {
-    console.log(`📡 [GPS] Initiating reverse geocoding for coordinates: lat=${lat}, lng=${lng}`);
+    console.log(`📡 [GPS] Initiating reverse geocoding via backend for coordinates: lat=${lat}, lng=${lng}`);
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      
-      const response = await fetch(url, { 
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'JanShaktiGrievancePortal/1.0.0 (citizen@janshakti.gov.in)',
-          'Accept-Language': 'en'
-        }
+      const res = await api.get('/location/reverse', {
+        params: { lat, lng }
       });
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) throw new Error('Nominatim reverse lookup failed');
-      const geoData = await response.json();
-      console.log('✅ [GPS] Geocoding API response received:', JSON.stringify(geoData.address));
-      
-      if (geoData && geoData.address) {
-        const addr = geoData.address;
-        const detectedState = addr.state || addr.region || '';
-        const detectedDistrict = addr.district || addr.state_district || addr.county || addr.city || addr.suburb || '';
-        const pincode = addr.postcode || '';
-        const address = geoData.display_name || `GPS Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        
-        console.log(`📡 [GPS] Mapping address keys. State: ${detectedState}, District: ${detectedDistrict}, Pincode: ${pincode}`);
-        const { matchedState, matchedDistrict } = matchStateAndDistrict(detectedState, detectedDistrict, addr);
+
+      const responseData = res.data;
+      if (responseData && responseData.success && responseData.data) {
+        const data = responseData.data;
+        const detectedState = data.state || '';
+        const detectedDistrict = data.district || data.city || '';
+        const pincode = data.pincode || '';
+        const address = data.address || `GPS Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+        console.log(`📡 [GPS] Geocoding API response received: state=${detectedState}, district=${detectedDistrict}, pincode=${pincode}`);
+        const { matchedState, matchedDistrict } = matchStateAndDistrict(detectedState, detectedDistrict, data.raw || data);
         console.log(`📡 [GPS] Mapping complete. Resolved State: ${matchedState}, Resolved District: ${matchedDistrict}`);
+
+        const finalState = matchedState || (detectedState ? detectedState.toLowerCase() : '');
+        const finalDistrict = matchedDistrict || (detectedDistrict ? detectedDistrict.toLowerCase() : '');
 
         setForm(f => ({
           ...f,
@@ -243,17 +234,17 @@ export default function SubmitComplaint() {
             ...f.location,
             lat,
             lng,
-            address: address,
-            state: matchedState || f.location.state,
-            district: matchedDistrict || f.location.district,
+            address: address || f.location.address,
+            state: finalState || f.location.state,
+            district: finalDistrict || f.location.district,
             pincode: pincode || f.location.pincode
           }
         }));
 
-        if (!matchedState || !matchedDistrict) {
-          toast.error('GPS captured coordinates, but state/district could not be resolved. Please select your district manually.', { duration: 6000 });
-        } else {
-          toast.success(`Location auto-detected: ${matchedDistrict.toUpperCase()}, ${matchedState.toUpperCase()}!`);
+        if (finalDistrict && finalState) {
+          toast.success(`Location auto-detected: ${finalDistrict.toUpperCase()}, ${finalState.toUpperCase()}!`);
+        } else if (address) {
+          toast.success('Address auto-detected! Please confirm state and district.');
         }
         return true;
       }
@@ -261,7 +252,7 @@ export default function SubmitComplaint() {
       console.error('❌ [GPS] Reverse geocoding failed:', err);
     }
     
-    // Fallback if Nominatim failed or returned no address, but we have lat/lng
+    // Fallback if lookup failed or returned no address, but we have lat/lng
     console.log('⚠️ [GPS] Reverse geocoding failed. Auto-filling raw coordinates as address fallback.');
     setForm(f => ({
       ...f,
@@ -816,7 +807,13 @@ export default function SubmitComplaint() {
                     <label className="label">District <span className="text-red-500">*</span></label>
                     <select value={form.location.district} onChange={e => setLoc('district', e.target.value)} className="input" disabled={!form.location.state}>
                       <option value="">Select District</option>
-                      {districts.length > 0 ? districts.map(d => <option key={d} value={d.toLowerCase()}>{d}</option>) : <option value="other">Other</option>}
+                      {districts.map(d => <option key={d} value={d.toLowerCase()}>{d}</option>)}
+                      {form.location.district && !districts.some(d => d.toLowerCase() === form.location.district.toLowerCase()) && (
+                        <option value={form.location.district.toLowerCase()}>
+                          {form.location.district.charAt(0).toUpperCase() + form.location.district.slice(1)}
+                        </option>
+                      )}
+                      <option value="other">Other</option>
                     </select>
                   </div>
                 </div>

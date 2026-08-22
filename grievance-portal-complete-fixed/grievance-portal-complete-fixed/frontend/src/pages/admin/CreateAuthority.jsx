@@ -6,7 +6,7 @@ import { ArrowLeft, Shield, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide
 import toast from 'react-hot-toast';
 import DashboardLayout from '../../components/DashboardLayout';
 import api from '../../utils/api';
-import { INDIAN_STATES } from '../../utils/constants';
+import { INDIAN_STATES, DISTRICTS_MAP } from '../../utils/constants';
 
 const AUTHORITY_TYPES = [
   { value: 'ps', role: 'ps_officer', label: 'Police Station (PS)', icon: '🚔', desc: 'Handles crime complaints in assigned jurisdiction' },
@@ -15,16 +15,6 @@ const AUTHORITY_TYPES = [
   { value: 'fire', role: 'fire_officer', label: 'Fire Department', icon: '🔥', desc: 'Handles fire emergencies, safety codes and violations' },
   { value: 'hospital', role: 'hospital_officer', label: 'Healthcare & Hospital Authority', icon: '🏥', desc: 'Handles medical care, public hospitals and healthcare issues' },
 ];
-
-const DISTRICTS_MAP = {
-  'andhra pradesh': ['Guntur', 'Krishna', 'Visakhapatnam', 'East Godavari', 'West Godavari', 'Kurnool', 'Kadapa', 'Chittoor', 'Nellore', 'Srikakulam'],
-  telangana: ['Hyderabad', 'Warangal', 'Khammam', 'Karimnagar', 'Nizamabad', 'Rangareddy', 'Medak'],
-  maharashtra: ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad', 'Thane'],
-  karnataka: ['Bengaluru', 'Mysuru', 'Hubli', 'Mangaluru', 'Belagavi'],
-  'tamil nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Salem', 'Tiruchirappalli'],
-  'uttar pradesh': ['Lucknow', 'Kanpur', 'Varanasi', 'Agra', 'Prayagraj', 'Meerut'],
-  delhi: ['New Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi'],
-};
 
 export default function CreateAuthority() {
   const navigate = useNavigate();

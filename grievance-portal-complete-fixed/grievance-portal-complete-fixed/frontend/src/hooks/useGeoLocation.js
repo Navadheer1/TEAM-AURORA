@@ -1,9 +1,8 @@
 import { useState, useCallback } from 'react';
-
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
+import api from '../utils/api';
 
 /**
- * useGeoLocation — GPS detection + optional reverse geocoding via OpenStreetMap Nominatim
+ * useGeoLocation — GPS detection + reverse geocoding via backend multi-tier provider
  */
 export function useGeoLocation() {
   const [location, setLocation] = useState(null);
@@ -27,24 +26,25 @@ export function useGeoLocation() {
           let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
           let state = '';
           let district = '';
+          let pincode = '';
 
-          // Reverse geocode via Nominatim (free, no API key needed)
+          // Reverse geocode via secure backend
           try {
-            const res = await fetch(
-              `${NOMINATIM_URL}?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-              { headers: { 'Accept-Language': 'en' } }
-            );
-            const data = await res.json();
-            const addr = data.address || {};
-
-            address = data.display_name?.split(',').slice(0, 3).join(',').trim() || address;
-            state = addr.state || '';
-            district = addr.county || addr.state_district || addr.city_district || '';
+            const res = await api.get('/location/reverse', {
+              params: { lat, lng }
+            });
+            if (res.data?.success && res.data?.data) {
+              const d = res.data.data;
+              address = d.address || address;
+              state = d.state || '';
+              district = d.district || d.city || '';
+              pincode = d.pincode || '';
+            }
           } catch {
-            // Nominatim failed — use raw coords
+            // Geocoding failed — use raw coords
           }
 
-          const result = { lat, lng, address, state: state.toLowerCase(), district: district.toLowerCase(), accuracy };
+          const result = { lat, lng, address, state: state.toLowerCase(), district: district.toLowerCase(), pincode, accuracy };
           setLocation(result);
           setIsLoading(false);
           resolve(result);

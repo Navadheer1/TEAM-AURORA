@@ -664,6 +664,93 @@ def ip_geolocation_view(request):
         return JsonResponse({'success': False, 'message': f"Proxy geolocation error: {str(e)}"}, status=500)
 
 @csrf_exempt
+@require_http_methods(["GET", "POST"])
+def reverse_geocode_view(request):
+    import requests
+    try:
+        lat = request.GET.get('lat') or request.GET.get('latitude')
+        lng = request.GET.get('lng') or request.GET.get('lon') or request.GET.get('longitude')
+        
+        if not lat or not lng:
+            return JsonResponse({'success': False, 'message': 'Latitude and Longitude are required.'}, status=400)
+            
+        lat = float(lat)
+        lng = float(lng)
+
+        # Tier 1: OSM Nominatim with custom User-Agent
+        try:
+            url = f"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={lat}&lon={lng}&addressdetails=1&accept-language=en"
+            headers = {
+                'User-Agent': 'JanShaktiGrievancePortal/1.0.0 (contact: support@janshakti.gov.in)',
+                'Accept-Language': 'en'
+            }
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                addr = data.get('address', {})
+                return JsonResponse({
+                    'success': True,
+                    'provider': 'nominatim',
+                    'data': {
+                        'lat': lat,
+                        'lng': lng,
+                        'address': data.get('display_name') or f"GPS Coordinates: {lat:.5f}, {lng:.5f}",
+                        'road': addr.get('road', ''),
+                        'city': addr.get('city') or addr.get('town') or addr.get('village', ''),
+                        'district': addr.get('district') or addr.get('state_district') or addr.get('county', ''),
+                        'state': addr.get('state', ''),
+                        'pincode': addr.get('postcode', ''),
+                        'country': addr.get('country', 'India'),
+                        'raw': addr
+                    }
+                })
+        except Exception as e:
+            print("Nominatim error in Django:", str(e))
+
+        # Tier 2: BigDataCloud fallback
+        try:
+            bdc_url = f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lng}&localityLanguage=en"
+            res = requests.get(bdc_url, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                parts = [data.get('locality'), data.get('city'), data.get('principalSubdivision'), data.get('postcode'), data.get('countryName', 'India')]
+                addr_str = ', '.join([p for p in parts if p])
+                return JsonResponse({
+                    'success': True,
+                    'provider': 'bigdatacloud',
+                    'data': {
+                        'lat': lat,
+                        'lng': lng,
+                        'address': addr_str or f"GPS Coordinates: {lat:.5f}, {lng:.5f}",
+                        'road': '',
+                        'city': data.get('city') or data.get('locality', ''),
+                        'district': data.get('locality') or data.get('city', ''),
+                        'state': data.get('principalSubdivision', ''),
+                        'pincode': data.get('postcode', ''),
+                        'country': data.get('countryName', 'India'),
+                        'raw': data
+                    }
+                })
+        except Exception as e:
+            print("BigDataCloud error in Django:", str(e))
+
+        return JsonResponse({
+            'success': True,
+            'provider': 'coordinates_fallback',
+            'data': {
+                'lat': lat,
+                'lng': lng,
+                'address': f"GPS Coordinates: {lat:.6f}, {lng:.6f}",
+                'state': '',
+                'district': '',
+                'pincode': '',
+                'country': 'India'
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def check_duplicate_view(request):
     import json

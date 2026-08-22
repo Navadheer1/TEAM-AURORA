@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, X } from 'lucide-react';
+import api from '../utils/api';
 
 // Dynamically import Leaflet to avoid SSR issues
 let L = null;
@@ -96,13 +97,15 @@ export default function MapPicker({
       setStatus('Getting address...');
       let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
-        const data = await res.json();
-        address = data.display_name?.split(',').slice(0, 4).join(',').trim() || address;
-      } catch {}
+        const res = await api.get('/location/reverse', {
+          params: { lat, lng }
+        });
+        if (res.data?.success && res.data?.data?.address) {
+          address = res.data.data.address;
+        }
+      } catch (err) {
+        console.warn('MapPicker reverse geocode fallback:', err.message);
+      }
 
       setStatus(address);
       if (onLocationSelect) onLocationSelect(lat, lng, address);

@@ -169,33 +169,39 @@ export default function EmergencyReport() {
   const detectLocation = () => {
     setGpsLoading(true);
 
-    const browserGeoSuccess = (position) => {
+    const browserGeoSuccess = async (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const accuracy = position.coords.accuracy ? `±${Math.round(position.coords.accuracy)}m (GPS Lock)` : '±5m (High Precision)';
       setAccuracyRadius(accuracy);
 
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
-        .then((r) => r.json())
-        .then((data) => {
+      try {
+        const res = await api.get('/location/reverse', {
+          params: { lat, lng }
+        });
+        if (res.data?.success && res.data?.data) {
+          const d = res.data.data;
           setLocation({
-            address: data.display_name || `Coordinates: (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-            state: data.address?.state?.toLowerCase() || 'andhra pradesh',
-            district: data.address?.state_district?.toLowerCase() || data.address?.county?.toLowerCase() || 'guntur',
+            address: d.address || `Coordinates: (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
+            state: d.state ? d.state.toLowerCase() : 'andhra pradesh',
+            district: d.district ? d.district.toLowerCase() : (d.city ? d.city.toLowerCase() : 'guntur'),
             lat,
             lng,
           });
-        })
-        .catch(() => {
-          setLocation({
-            address: `GPS Locked: (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-            state: 'andhra pradesh',
-            district: 'guntur',
-            lat,
-            lng,
-          });
-        })
-        .finally(() => setGpsLoading(false));
+        } else {
+          throw new Error('No geocode data');
+        }
+      } catch (err) {
+        setLocation({
+          address: `GPS Locked: (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
+          state: 'andhra pradesh',
+          district: 'guntur',
+          lat,
+          lng,
+        });
+      } finally {
+        setGpsLoading(false);
+      }
     };
 
     const browserGeoError = () => {

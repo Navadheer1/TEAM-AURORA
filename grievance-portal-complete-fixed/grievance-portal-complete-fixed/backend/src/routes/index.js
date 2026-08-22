@@ -171,11 +171,26 @@ const { handleGroqTranscribe } = require('../controllers/groqVoiceController');
 const { handleUnderstandCommand } = require('../controllers/groqVoiceAgentController');
 const { handleVoiceIntent } = require('../controllers/voiceIntentController');
 
+// ============= LOCATION & GEOCODING ROUTES =============
+const locationRouter = express.Router();
+const { reverseGeocode, getIpGeolocation } = require('../controllers/locationController');
+locationRouter.get('/reverse', reverseGeocode);
+locationRouter.post('/reverse', reverseGeocode);
+locationRouter.get('/ip-geolocation', getIpGeolocation);
+
+// Alias on complaints router for backward compatibility
+complaintRouter.get('/ip-geolocation', getIpGeolocation);
+complaintRouter.get('/reverse-geocode', reverseGeocode);
+complaintRouter.post('/reverse-geocode', reverseGeocode);
+
 router.use('/auth', authRouter);
 router.use('/complaints', complaintRouter);
+router.use('/location', locationRouter);
 router.use('/admin', adminRouter);
 router.use('/chatbot', chatbotRouter);
 router.use('/reputation', reputationRouter);
+router.get('/reverse-geocode', reverseGeocode);
+router.get('/ip-geolocation', getIpGeolocation);
 router.post('/openai-voice/chat', memoryUpload.single('file'), handleVoiceChat);
 router.post('/voice/transcribe', memoryUpload.single('file'), handleGroqTranscribe);
 router.post('/voice/understand-command', handleUnderstandCommand);
